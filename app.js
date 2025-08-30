@@ -67,7 +67,7 @@ app.post("/", async (req, res) => {
 
 async function processWebhookEvent(body) {
   console.log("🔄 processWebhookEvent called");
-  
+
   const entry = body.entry?.[0];
   if (!entry) {
     console.log("❌ No entry found in webhook body");
@@ -81,12 +81,17 @@ async function processWebhookEvent(body) {
     return;
   }
   console.log("✅ Changes found");
+  console.log("📋 Changes value:", JSON.stringify(changes.value, null, 2));
 
-  if (changes.value?.object !== "whatsapp_business_account") {
-    console.log("❌ Object is not whatsapp_business_account:", changes.value?.object);
+  // Check if this is a valid WhatsApp message
+  if (changes.value?.messaging_product !== "whatsapp") {
+    console.log(
+      "❌ Messaging product is not whatsapp:",
+      changes.value?.messaging_product
+    );
     return;
   }
-  console.log("✅ Object is whatsapp_business_account");
+  console.log("✅ Messaging product is whatsapp");
 
   const messages = changes.value.messages;
   if (!messages) {
