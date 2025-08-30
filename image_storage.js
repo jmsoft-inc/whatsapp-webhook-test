@@ -22,8 +22,10 @@ async function saveReceiptImage(mediaUrl, invoiceNumber) {
     console.log(`📸 Media URL: ${mediaUrl}`);
 
     // Check if this is a fallback URL (for testing)
-    if (mediaUrl.includes('example.com')) {
-      console.log(`⚠️ Using fallback URL - skipping image download for testing`);
+    if (mediaUrl.includes("example.com")) {
+      console.log(
+        `⚠️ Using fallback URL - skipping image download for testing`
+      );
       return {
         success: false,
         error: "Fallback URL - no real image to download",

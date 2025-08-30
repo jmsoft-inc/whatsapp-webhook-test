@@ -622,14 +622,11 @@ async function getMediaUrl(mediaId) {
   try {
     console.log(`📥 Getting media URL for ID: ${mediaId}`);
 
-    const response = await axios.get(
-      `${WHATSAPP_API_URL}/${mediaId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
-        },
-      }
-    );
+    const response = await axios.get(`${WHATSAPP_API_URL}/${mediaId}`, {
+      headers: {
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
+      },
+    });
 
     console.log("📥 Media URL response:", response.data);
     return response.data.url;

@@ -59,7 +59,7 @@ async function processWithAI(text, invoiceNumber) {
     const response = await axios.post(
       "https://api.openai.com/v1/chat/completions",
       {
-        model: "gpt-4",
+        model: "gpt-5",
         messages: [
           {
             role: "system",
@@ -146,68 +146,140 @@ async function processWithAI(text, invoiceNumber) {
 
 // Fallback response when AI is not available
 function createFallbackResponse(text, invoiceNumber) {
-  // Basic parsing for common patterns
-  const lines = text.split("\n");
-  let company = "ALBERT HEIJN";
-  let date = new Date().toISOString().split("T")[0];
+  // Extract basic information from text
+  const company = text.includes("ALBERT HEIJN") || text.includes("AH") ? "ALBERT HEIJN" : "NB";
+  const date = new Date().toISOString().split("T")[0];
+  
+  // Try to extract total amount from text with multiple patterns
   let total = 0;
-  let items = [];
-  let paymentMethod = "PIN";
-
-  // Extract basic information
-  for (const line of lines) {
-    if (line.includes("Totaal:")) {
-      const match = line.match(/Totaal:\s*€?([0-9,]+)/);
-      if (match) {
-        total = parseFloat(match[1].replace(",", "."));
-      }
+  const totalPatterns = [
+    /(?:TOTAAL|TOTAALBEDRAG|TOTALE|TOTAAL:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i,
+    /(?:BETALEN|TE BETALEN)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i,
+    /[€]?\s*(\d+[.,]\d{2}|\d+)\s*(?:EUR|€)/i,
+    /(\d+[.,]\d{2})\s*[€]?/i
+  ];
+  
+  for (const pattern of totalPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      total = parseFloat(match[1].replace(",", "."));
+      break;
     }
-    if (line.includes("Betaalmethode:")) {
-      const match = line.match(/Betaalmethode:\s*(.+)/);
-      if (match) {
-        paymentMethod = match[1].trim();
-      }
+  }
+  
+  // Try to extract subtotal
+  let subtotal = 0;
+  const subtotalMatch = text.match(/(?:SUBTOTAAL|SUBTOTAAL:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
+  if (subtotalMatch) {
+    subtotal = parseFloat(subtotalMatch[1].replace(",", "."));
+  }
+  
+  // Try to extract BTW amounts
+  let tax9 = 0;
+  let tax21 = 0;
+  const tax9Match = text.match(/(?:BTW\s*9%?|9%\s*BTW)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
+  const tax21Match = text.match(/(?:BTW\s*21%?|21%\s*BTW)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
+  
+  if (tax9Match) tax9 = parseFloat(tax9Match[1].replace(",", "."));
+  if (tax21Match) tax21 = parseFloat(tax21Match[1].replace(",", "."));
+  
+  // Try to extract bonus, emballage, voordeel, koopzegels
+  let bonus = 0;
+  let emballage = 0;
+  let voordeel = 0;
+  let koopzegels = 0;
+  
+  const bonusMatch = text.match(/(?:BONUS|BONUS:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
+  const emballageMatch = text.match(/(?:EMBALLAGE|STATIEGELD|EMBALLAGE:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
+  const voordeelMatch = text.match(/(?:VOORDEEL|KORTING|ACTIE|VOORDEEL:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
+  const koopzegelsMatch = text.match(/(?:KOOPZEGELS|ZEGELS|KOOPZEGELS:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
+  
+  if (bonusMatch) bonus = parseFloat(bonusMatch[1].replace(",", "."));
+  if (emballageMatch) emballage = parseFloat(emballageMatch[1].replace(",", "."));
+  if (voordeelMatch) voordeel = parseFloat(voordeelMatch[1].replace(",", "."));
+  if (koopzegelsMatch) koopzegels = parseFloat(koopzegelsMatch[1].replace(",", "."));
+  
+  // Try to extract payment method
+  let paymentMethod = "NB";
+  if (text.includes("PIN") || text.includes("PINPAS")) paymentMethod = "PIN";
+  else if (text.includes("CONTANT") || text.includes("CASH")) paymentMethod = "CONTANT";
+  else if (text.includes("IDEAL")) paymentMethod = "IDEAL";
+  else if (text.includes("CREDITCARD") || text.includes("CREDIT")) paymentMethod = "CREDITCARD";
+  
+  // Try to extract time
+  let time = "NB";
+  const timeMatch = text.match(/(\d{1,2}):(\d{2})/);
+  if (timeMatch) {
+    time = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+  }
+  
+  // Try to extract kassa and transactie numbers
+  let kassa = "NB";
+  let transactie = "NB";
+  const kassaMatch = text.match(/(?:KASSA|KAS)\s*(\d+)/i);
+  const transactieMatch = text.match(/(?:TRANSACTIE|TRANS|TXN)\s*(\d+)/i);
+  
+  if (kassaMatch) kassa = kassaMatch[1];
+  if (transactieMatch) transactie = transactieMatch[1];
+  
+  // Try to extract individual items
+  const items = [];
+  const itemPattern = /([A-Z\s]+)\s+(\d+[.,]\d{2})\s*[€]?/gi;
+  let itemMatch;
+  let itemCount = 0;
+  
+  while ((itemMatch = itemPattern.exec(text)) !== null && itemCount < 10) {
+    const itemName = itemMatch[1].trim();
+    const itemPrice = parseFloat(itemMatch[2].replace(",", "."));
+    
+    if (itemName.length > 2 && itemPrice > 0) {
+      items.push({
+        name: itemName,
+        quantity: "1",
+        unit_price: itemPrice,
+        total_price: itemPrice,
+        category: "voeding",
+        bonus: "NB",
+      });
+      itemCount++;
     }
-    if (line.includes("Datum:")) {
-      const match = line.match(/Datum:\s*(\d{2})-(\d{2})-(\d{4})/);
-      if (match) {
-        date = `${match[3]}-${match[2]}-${match[1]}`;
-      }
-    }
+  }
+  
+  // If no items found, create a generic one
+  if (items.length === 0) {
+    items.push({
+      name: "Producten",
+      quantity: "1",
+      unit_price: total,
+      total_price: total,
+      category: "voeding",
+      bonus: "NB",
+    });
   }
 
   return {
     invoice_number: invoiceNumber,
     company: company,
     date: date,
-    time: "14:30",
+    time: time,
     total_amount: total,
-    subtotal: total * 0.9,
-    tax_9: total * 0.05,
-    tax_21: total * 0.05,
-    bonus_amount: 0,
-    emballage_amount: 0,
-    voordeel_amount: 0,
-    koopzegels_amount: 0,
+    subtotal: subtotal || (total - tax9 - tax21 - bonus - emballage - voordeel - koopzegels),
+    tax_9: tax9,
+    tax_21: tax21,
+    bonus_amount: bonus,
+    emballage_amount: emballage,
+    voordeel_amount: voordeel,
+    koopzegels_amount: koopzegels,
     currency: "EUR",
     document_type: "receipt",
     payment_method: paymentMethod,
-    items: [
-      {
-        name: "Producten",
-        quantity: "1",
-        unit_price: total,
-        total_price: total,
-        category: "voeding",
-        bonus: "onbekend",
-      },
-    ],
-    item_count: 1,
-    confidence: 60,
-    notes: "Handmatige verwerking - AI niet beschikbaar",
+    items: items,
+    item_count: items.length,
+    confidence: 70,
+    notes: "Handmatige verwerking - AI niet beschikbaar, data geëxtraheerd uit tekst",
     store_info: {
-      kassa: "3",
-      transactie: "123456789",
+      kassa: kassa,
+      transactie: transactie,
     },
   };
 }
@@ -249,22 +321,22 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
     const mainRowData = [
       new Date().toISOString(), // Timestamp
       invoiceData.invoice_number || "INV-UNKNOWN",
-      invoiceData.company || "Onbekend",
+      invoiceData.company || "NB",
       invoiceData.date || new Date().toISOString().split("T")[0],
-      invoiceData.time || "",
-      invoiceData.subtotal || 0,
-      invoiceData.tax_9 || 0,
-      invoiceData.tax_21 || 0,
-      invoiceData.bonus_amount || 0,
-      invoiceData.emballage_amount || 0,
-      invoiceData.voordeel_amount || 0,
-      invoiceData.koopzegels_amount || 0,
-      invoiceData.total_amount || 0,
+      invoiceData.time || "NB",
+      invoiceData.subtotal || "NB",
+      invoiceData.tax_9 || "NB",
+      invoiceData.tax_21 || "NB",
+      invoiceData.bonus_amount || "NB",
+      invoiceData.emballage_amount || "NB",
+      invoiceData.voordeel_amount || "NB",
+      invoiceData.koopzegels_amount || "NB",
+      invoiceData.total_amount || "NB",
       invoiceData.currency || "EUR",
       invoiceData.document_type || "receipt",
-      invoiceData.item_count || 0,
-      invoiceData.payment_method || "unknown",
-      invoiceData.confidence || 0,
+      invoiceData.item_count || "NB",
+      invoiceData.payment_method || "NB",
+      invoiceData.confidence || "NB",
       invoiceData.notes || "",
     ];
 
@@ -283,18 +355,18 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
       const detailRows = invoiceData.items.map((item) => [
         new Date().toISOString(), // Timestamp
         invoiceData.invoice_number || "INV-UNKNOWN",
-        invoiceData.company || "Onbekend",
+        invoiceData.company || "NB",
         invoiceData.date || new Date().toISOString().split("T")[0],
-        item.name || "Onbekend product",
-        item.category || "voeding",
-        item.quantity || 1,
-        item.unit_price || 0,
-        item.total_price || 0,
-        item.bonus || "onbekend",
+        item.name || "NB",
+        item.category || "NB",
+        item.quantity || "NB",
+        item.unit_price || "NB",
+        item.total_price || "NB",
+        item.bonus || "NB",
         invoiceData.currency || "EUR",
-        invoiceData.payment_method || "unknown",
-        invoiceData.store_info?.kassa || "",
-        invoiceData.store_info?.transactie || "",
+        invoiceData.payment_method || "NB",
+        invoiceData.store_info?.kassa || "NB",
+        invoiceData.store_info?.transactie || "NB",
         invoiceData.notes || "",
       ]);
 
