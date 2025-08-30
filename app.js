@@ -623,7 +623,7 @@ async function getMediaUrl(mediaId) {
     console.log(`📥 Getting media URL for ID: ${mediaId}`);
 
     const response = await axios.get(
-      `${WHATSAPP_API_URL}/${PHONE_NUMBER_ID}/media/${mediaId}`,
+      `${WHATSAPP_API_URL}/${mediaId}`,
       {
         headers: {
           Authorization: `Bearer ${ACCESS_TOKEN}`,
@@ -635,6 +635,7 @@ async function getMediaUrl(mediaId) {
     return response.data.url;
   } catch (error) {
     console.error("❌ Error getting media URL:", error.message);
+    console.error("❌ Error details:", error.response?.data);
     // Fallback to simulated URL for testing
     return `https://example.com/media/${mediaId}`;
   }

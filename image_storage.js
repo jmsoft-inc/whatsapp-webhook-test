@@ -3,12 +3,12 @@
  * Handles saving and retrieving receipt images by invoice number
  */
 
-const fs = require('fs');
-const path = require('path');
-const axios = require('axios');
+const fs = require("fs");
+const path = require("path");
+const axios = require("axios");
 
 // Create storage directory if it doesn't exist
-const STORAGE_DIR = path.join(__dirname, 'receipt_images');
+const STORAGE_DIR = path.join(__dirname, "receipt_images");
 if (!fs.existsSync(STORAGE_DIR)) {
   fs.mkdirSync(STORAGE_DIR, { recursive: true });
 }
@@ -19,36 +19,49 @@ if (!fs.existsSync(STORAGE_DIR)) {
 async function saveReceiptImage(mediaUrl, invoiceNumber) {
   try {
     console.log(`📸 Downloading image for invoice ${invoiceNumber}...`);
-    
+    console.log(`📸 Media URL: ${mediaUrl}`);
+
+    // Check if this is a fallback URL (for testing)
+    if (mediaUrl.includes('example.com')) {
+      console.log(`⚠️ Using fallback URL - skipping image download for testing`);
+      return {
+        success: false,
+        error: "Fallback URL - no real image to download",
+      };
+    }
+
     // Download image from WhatsApp
     const response = await axios.get(mediaUrl, {
-      responseType: 'arraybuffer',
+      responseType: "arraybuffer",
       headers: {
-        'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`
-      }
+        Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+      },
     });
 
     // Generate filename
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = `${invoiceNumber}_${timestamp}.jpg`;
     const filepath = path.join(STORAGE_DIR, filename);
 
     // Save image to file
     fs.writeFileSync(filepath, response.data);
-    
+
     console.log(`✅ Image saved: ${filepath}`);
-    
+
     return {
       success: true,
       filename: filename,
       filepath: filepath,
-      size: response.data.length
+      size: response.data.length,
     };
   } catch (error) {
-    console.error(`❌ Error saving image for invoice ${invoiceNumber}:`, error.message);
+    console.error(
+      `❌ Error saving image for invoice ${invoiceNumber}:`,
+      error.message
+    );
     return {
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -59,24 +72,27 @@ async function saveReceiptImage(mediaUrl, invoiceNumber) {
 function getReceiptImageInfo(invoiceNumber) {
   try {
     const files = fs.readdirSync(STORAGE_DIR);
-    const imageFile = files.find(file => file.startsWith(invoiceNumber));
-    
+    const imageFile = files.find((file) => file.startsWith(invoiceNumber));
+
     if (imageFile) {
       const filepath = path.join(STORAGE_DIR, imageFile);
       const stats = fs.statSync(filepath);
-      
+
       return {
         exists: true,
         filename: imageFile,
         filepath: filepath,
         size: stats.size,
-        created: stats.birthtime
+        created: stats.birthtime,
       };
     }
-    
+
     return { exists: false };
   } catch (error) {
-    console.error(`❌ Error getting image info for invoice ${invoiceNumber}:`, error.message);
+    console.error(
+      `❌ Error getting image info for invoice ${invoiceNumber}:`,
+      error.message
+    );
     return { exists: false, error: error.message };
   }
 }
@@ -86,7 +102,7 @@ function getReceiptImageInfo(invoiceNumber) {
  */
 function createReceiptViewer(invoiceNumber) {
   const imageInfo = getReceiptImageInfo(invoiceNumber);
-  
+
   if (!imageInfo.exists) {
     return `
       <html>
@@ -98,9 +114,9 @@ function createReceiptViewer(invoiceNumber) {
       </html>
     `;
   }
-  
+
   const imageUrl = `/receipt_images/${imageInfo.filename}`;
-  
+
   return `
     <html>
       <head>
@@ -118,7 +134,9 @@ function createReceiptViewer(invoiceNumber) {
           
           <div class="receipt-info">
             <p><strong>Filename:</strong> ${imageInfo.filename}</p>
-            <p><strong>Size:</strong> ${(imageInfo.size / 1024).toFixed(2)} KB</p>
+            <p><strong>Size:</strong> ${(imageInfo.size / 1024).toFixed(
+              2
+            )} KB</p>
             <p><strong>Created:</strong> ${imageInfo.created.toLocaleString()}</p>
           </div>
           
@@ -138,24 +156,24 @@ function getAllReceipts() {
   try {
     const files = fs.readdirSync(STORAGE_DIR);
     const receipts = files
-      .filter(file => file.endsWith('.jpg'))
-      .map(file => {
+      .filter((file) => file.endsWith(".jpg"))
+      .map((file) => {
         const filepath = path.join(STORAGE_DIR, file);
         const stats = fs.statSync(filepath);
-        const invoiceNumber = file.split('_')[0];
-        
+        const invoiceNumber = file.split("_")[0];
+
         return {
           invoiceNumber: invoiceNumber,
           filename: file,
           size: stats.size,
-          created: stats.birthtime
+          created: stats.birthtime,
         };
       })
       .sort((a, b) => b.created - a.created); // Newest first
-    
+
     return receipts;
   } catch (error) {
-    console.error('❌ Error getting receipts list:', error.message);
+    console.error("❌ Error getting receipts list:", error.message);
     return [];
   }
 }
@@ -165,16 +183,22 @@ function getAllReceipts() {
  */
 function createReceiptsList() {
   const receipts = getAllReceipts();
-  
-  const receiptsList = receipts.map(receipt => `
+
+  const receiptsList = receipts
+    .map(
+      (receipt) => `
     <tr>
-      <td><a href="/receipt/${receipt.invoiceNumber}">${receipt.invoiceNumber}</a></td>
+      <td><a href="/receipt/${receipt.invoiceNumber}">${
+        receipt.invoiceNumber
+      }</a></td>
       <td>${receipt.created.toLocaleDateString()}</td>
       <td>${receipt.created.toLocaleTimeString()}</td>
       <td>${(receipt.size / 1024).toFixed(2)} KB</td>
     </tr>
-  `).join('');
-  
+  `
+    )
+    .join("");
+
   return `
     <html>
       <head>
@@ -219,5 +243,5 @@ module.exports = {
   createReceiptViewer,
   createReceiptsList,
   getAllReceipts,
-  STORAGE_DIR
+  STORAGE_DIR,
 };
