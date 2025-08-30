@@ -89,18 +89,18 @@ async function processMessage(message) {
 async function processInteractiveMessage(message) {
   const from = message.from;
   const interactive = message.interactive;
-  
+
   if (interactive.type === "button_reply") {
     const buttonId = interactive.button_reply.id;
     console.log(`Button clicked: ${buttonId}`);
-    
+
     // Get or create user session
     let session = userSessions.get(from);
     if (!session) {
       session = { state: "initial", invoices: [] };
       userSessions.set(from, session);
     }
-    
+
     // Process button selection
     await handleInitialState(from, buttonId, session);
   }
@@ -243,7 +243,7 @@ Helaas zijn er nog niet meerdere AI Agents beschikbaar die je verder kunnen help
 Neem contact op via: *JMSoft.com*`;
 
     await sendWhatsAppMessage(from, infoMessage);
-    
+
     // Show menu again after info
     await showMainMenu(from);
     session.state = "initial";
@@ -468,7 +468,7 @@ async function processWithAI(text) {
     return {
       company: "ALBERT HEIJN",
       date: new Date().toISOString().split("T")[0],
-      total_amount: 9.60,
+      total_amount: 9.6,
       currency: "EUR",
       document_type: "receipt",
       item_count: 4,
@@ -610,5 +610,9 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`WhatsApp Webhook server running on port ${PORT}`);
   console.log(`Webhook URL: https://your-app-name.onrender.com`);
-  console.log(`Verify Token: ${VERIFY_TOKEN}`);
+  console.log(`Verify Token: ${verifyToken ? 'Set' : 'Not set'}`);
+  console.log(`Phone Number ID: ${PHONE_NUMBER_ID ? 'Set' : 'Not set'}`);
+  console.log(`Access Token: ${ACCESS_TOKEN ? 'Set' : 'Not set'}`);
+  console.log(`OpenAI API Key: ${OPENAI_API_KEY ? 'Set' : 'Not set'}`);
+  console.log(`Google Sheets ID: ${GOOGLE_SHEETS_SPREADSHEET_ID ? 'Set' : 'Not set'}`);
 });
