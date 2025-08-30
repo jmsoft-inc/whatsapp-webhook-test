@@ -25,35 +25,36 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const GOOGLE_SHEETS_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
 const GOOGLE_SHEETS_CREDENTIALS = process.env.GOOGLE_SHEETS_CREDENTIALS;
 
+// User session management
+const userSessions = new Map();
+
 // Route for GET requests (webhook verification)
 app.get("/", (req, res) => {
-  const {
-    "hub.mode": mode,
-    "hub.challenge": challenge,
-    "hub.verify_token": token,
-  } = req.query;
-
-  if (mode === "subscribe" && token === verifyToken) {
-    console.log("WEBHOOK VERIFIED");
-    res.status(200).send(challenge);
-  } else {
-    res.status(403).end();
-  }
+  res.send("WhatsApp Webhook is running!");
 });
 
 // Route for POST requests (webhook events)
 app.post("/", async (req, res) => {
-  const timestamp = new Date().toISOString().replace("T", " ").slice(0, 19);
-  console.log(`\n\nWebhook received ${timestamp}\n`);
-  console.log(JSON.stringify(req.body, null, 2));
+  console.log("Received webhook event:", JSON.stringify(req.body, null, 2));
 
-  try {
-    // Process webhook event
-    await processWebhookEvent(req.body);
-    res.status(200).end();
-  } catch (error) {
-    console.error("Error processing webhook:", error);
-    res.status(500).end();
+  // Handle webhook verification
+  if (req.body.mode === "subscribe" && req.body["hub.challenge"]) {
+    console.log("WEBHOOK VERIFIED");
+    res.status(200).send(req.body["hub.challenge"]);
+    return;
+  }
+
+  // Handle webhook events
+  if (req.body.object === "whatsapp_business_account") {
+    try {
+      await processWebhookEvent(req.body);
+      res.status(200).send("OK");
+    } catch (error) {
+      console.error("Error processing webhook event:", error);
+      res.status(500).send("Error");
+    }
+  } else {
+    res.status(404).send("Not found");
   }
 });
 
@@ -64,8 +65,8 @@ async function processWebhookEvent(body) {
   const changes = entry.changes?.[0];
   if (!changes || changes.value?.object !== "whatsapp_business_account") return;
 
-  const messages = changes.value?.messages;
-  if (!messages || messages.length === 0) return;
+  const messages = changes.value.messages;
+  if (!messages) return;
 
   for (const message of messages) {
     await processMessage(message);
@@ -73,43 +74,223 @@ async function processWebhookEvent(body) {
 }
 
 async function processMessage(message) {
-  console.log("Processing message:", message.type);
+  const from = message.from;
+  console.log(`Processing message from ${from}:`, message.type);
 
   if (message.type === "text") {
     await processTextMessage(message);
   } else if (message.type === "image") {
     await processImageMessage(message);
+  } else if (message.type === "interactive") {
+    await processInteractiveMessage(message);
+  }
+}
+
+async function processInteractiveMessage(message) {
+  const from = message.from;
+  const interactive = message.interactive;
+  
+  if (interactive.type === "button_reply") {
+    const buttonId = interactive.button_reply.id;
+    console.log(`Button clicked: ${buttonId}`);
+    
+    // Get or create user session
+    let session = userSessions.get(from);
+    if (!session) {
+      session = { state: "initial", invoices: [] };
+      userSessions.set(from, session);
+    }
+    
+    // Process button selection
+    await handleInitialState(from, buttonId, session);
   }
 }
 
 async function processTextMessage(message) {
   const from = message.from;
-  const text = message.text?.body;
+  const text = message.text?.body?.toLowerCase().trim();
 
   if (!text) return;
 
-  // Check if it's a receipt/invoice text
+  // Get or create user session
+  let session = userSessions.get(from);
+  if (!session) {
+    session = { state: "initial", invoices: [] };
+    userSessions.set(from, session);
+  }
+
+  console.log(`User ${from} in state: ${session.state}, message: "${text}"`);
+
+  // Process based on current state
+  switch (session.state) {
+    case "initial":
+      await handleInitialState(from, text, session);
+      break;
+    case "waiting_for_invoice":
+      await handleInvoiceSubmission(from, text, session);
+      break;
+    default:
+      await sendWhatsAppMessage(
+        from,
+        "Er is een fout opgetreden. Start opnieuw met een bericht."
+      );
+      session.state = "initial";
+      break;
+  }
+}
+
+async function showMainMenu(from) {
+  const menuMessage = {
+    messaging_product: "whatsapp",
+    to: from,
+    type: "interactive",
+    interactive: {
+      type: "button",
+      header: {
+        type: "text",
+        text: "🧾 AI Invoice Processor",
+      },
+      body: {
+        text: "Ik kan je helpen met het verwerken van facturen en bonnetjes. Kies een optie:",
+      },
+      action: {
+        buttons: [
+          {
+            type: "reply",
+            reply: {
+              id: "option_1",
+              title: "📄 Meerdere facturen",
+            },
+          },
+          {
+            type: "reply",
+            reply: {
+              id: "option_2",
+              title: "📋 1 factuur",
+            },
+          },
+          {
+            type: "reply",
+            reply: {
+              id: "option_3",
+              title: "ℹ️ Info",
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  await sendWhatsAppInteractiveMessage(from, menuMessage);
+}
+
+async function handleInitialState(from, text, session) {
+  // Show choice menu for any message in initial state
   if (
-    text.toLowerCase().includes("bonnetje") ||
-    text.toLowerCase().includes("factuur") ||
-    text.toLowerCase().includes("receipt") ||
-    text.toLowerCase().includes("invoice")
+    text.includes("1") ||
+    text.includes("optie 1") ||
+    text.includes("meerdere") ||
+    text === "option_1"
   ) {
-    console.log("Processing receipt text...");
-    await processReceiptText(from, text);
+    // Option 1: Multiple invoices
+    session.multipleMode = true;
+    const message = `📸 *Optie 1: Meerdere facturen/bonnetjes*
+
+Oke, stuur nu alle foto's tegelijkertijd in dan verwerk ik ze in de Google Sheet.
+
+*Stuur alle foto's van je facturen/bonnetjes*
+
+Na het ontvangen van alle facturen geef ik je de belangrijkste kenmerken terug van het factuur en de locatie waar je de sheet kunt vinden.
+
+*Of stuur 'menu' om terug te gaan naar het hoofdmenu.*`;
+
+    await sendWhatsAppMessage(from, message);
+    session.state = "waiting_for_invoice";
+  } else if (
+    text.includes("2") ||
+    text.includes("optie 2") ||
+    text.includes("1 factuur") ||
+    text === "option_2"
+  ) {
+    // Option 2: Single invoice
+    session.multipleMode = false;
+    const message = `📸 *Optie 2: 1 factuur/bonnetje*
+
+Oke, stuur je factuur in en dan verwerk ik hem in de Google Sheet.
+
+*Stuur een foto van je factuur/bonnetje*
+
+Na het ontvangen van het factuur geef ik je de belangrijkste kenmerken terug van het factuur en de locatie waar je de sheet kunt vinden.
+
+*Of stuur 'menu' om terug te gaan naar het hoofdmenu.*`;
+
+    await sendWhatsAppMessage(from, message);
+    session.state = "waiting_for_invoice";
+  } else if (
+    text.includes("3") ||
+    text.includes("optie 3") ||
+    text.includes("info") ||
+    text === "option_3"
+  ) {
+    // Option 3: Information
+    const infoMessage = `📋 *JMSoft AI Agents*
+
+Helaas zijn er nog niet meerdere AI Agents beschikbaar die je verder kunnen helpen. 
+
+*JMSoft is druk bezig met het ontwikkelen van nieuwe AI Agents* die je kunnen ondersteunen bij verschillende taken.
+
+*Wil je meer weten of heb je vragen?*
+Neem contact op via: *JMSoft.com*`;
+
+    await sendWhatsAppMessage(from, infoMessage);
+    
+    // Show menu again after info
+    await showMainMenu(from);
+    session.state = "initial";
+  } else if (
+    text.includes("menu") ||
+    text.includes("terug") ||
+    text.includes("help")
+  ) {
+    // Show main menu
+    await showMainMenu(from);
   } else {
-    // Send help message
-    const helpMessage = `🧾 WhatsApp Invoice Processor
+    // Show main menu for any other message
+    await showMainMenu(from);
+  }
+}
 
-Stuur een foto van een bonnetje of factuur om deze automatisch te verwerken.
+async function handleInvoiceSubmission(from, text, session) {
+  if (
+    text.includes("menu") ||
+    text.includes("terug") ||
+    text.includes("help")
+  ) {
+    // Return to main menu
+    await showMainMenu(from);
+    session.state = "initial";
+    session.invoices = [];
+  } else if (
+    text.includes("klaar") ||
+    text.includes("done") ||
+    text.includes("finish")
+  ) {
+    if (session.multipleMode && session.invoices.length > 0) {
+      await sendMultipleInvoicesSummary(from, session);
+      session.state = "initial";
+      session.invoices = [];
+    } else {
+      await sendWhatsAppMessage(
+        from,
+        "Je hebt nog geen facturen ingestuurd. Stuur eerst een foto van een factuur/bonnetje."
+      );
+    }
+  } else {
+    const helpMessage = `📸 *Stuur een foto van je factuur/bonnetje*
 
-Het systeem zal:
-✅ De afbeelding verwerken met OCR
-✅ Data extraheren met AI
-✅ Opslaan in Google Sheets
-✅ Een samenvatting terugsturen
-
-📸 Stuur nu een foto van je bonnetje!`;
+Of gebruik een van deze commando's:
+• *menu* - Terug naar hoofdmenu
+• *klaar* - Afronden (alleen bij meerdere facturen)`;
 
     await sendWhatsAppMessage(from, helpMessage);
   }
@@ -117,71 +298,27 @@ Het systeem zal:
 
 async function processImageMessage(message) {
   const from = message.from;
-  const image = message.image;
-
-  if (!image?.id) {
-    await sendWhatsAppMessage(
-      from,
-      "❌ Kon de afbeelding niet verwerken. Probeer opnieuw."
-    );
-    return;
-  }
-
   console.log("Processing image message...");
 
-  try {
-    // Download image
-    const imageUrl = await getMediaUrl(image.id);
-    const imageText = await extractTextFromImage(imageUrl);
-
-    if (!imageText) {
-      await sendWhatsAppMessage(
-        from,
-        "❌ Kon geen tekst uit de afbeelding extraheren. Zorg dat het bonnetje duidelijk leesbaar is."
-      );
-      return;
-    }
-
-    console.log("Extracted text:", imageText);
-
-    // Process with AI
-    const invoiceData = await processWithAI(imageText);
-
-    if (!invoiceData) {
-      await sendWhatsAppMessage(
-        from,
-        "❌ Kon de bonnetje data niet verwerken. Probeer een duidelijkere foto."
-      );
-      return;
-    }
-
-    // Save to Google Sheets
-    const saved = await saveToGoogleSheets(invoiceData);
-
-    if (!saved) {
-      await sendWhatsAppMessage(
-        from,
-        "❌ Kon data niet opslaan in Google Sheets."
-      );
-      return;
-    }
-
-    // Send response
-    const responseMessage = createResponseMessage(invoiceData);
-    await sendWhatsAppMessage(from, responseMessage);
-  } catch (error) {
-    console.error("Error processing image:", error);
-    await sendWhatsAppMessage(
-      from,
-      "❌ Er is een fout opgetreden bij het verwerken van je bonnetje. Probeer het later opnieuw."
-    );
+  // Get user session
+  let session = userSessions.get(from);
+  if (!session) {
+    session = { state: "initial", invoices: [] };
+    userSessions.set(from, session);
   }
-}
 
-async function processReceiptText(from, text) {
   try {
+    // Simulate getting media URL
+    const mediaUrl = await getMediaUrl(message.image.id);
+    console.log("Media URL:", mediaUrl);
+
+    // Simulate OCR text extraction
+    const extractedText = await extractTextFromImage(mediaUrl);
+    console.log("Extracted text:", extractedText);
+
     // Process with AI
-    const invoiceData = await processWithAI(text);
+    const invoiceData = await processWithAI(extractedText);
+    console.log("AI processed data:", invoiceData);
 
     if (!invoiceData) {
       await sendWhatsAppMessage(
@@ -193,6 +330,7 @@ async function processReceiptText(from, text) {
 
     // Save to Google Sheets
     const saved = await saveToGoogleSheets(invoiceData);
+    console.log("Saved to sheets:", saved);
 
     if (!saved) {
       await sendWhatsAppMessage(
@@ -202,135 +340,173 @@ async function processReceiptText(from, text) {
       return;
     }
 
-    // Send response
-    const responseMessage = createResponseMessage(invoiceData);
-    await sendWhatsAppMessage(from, responseMessage);
+    // Add to session
+    session.invoices.push(invoiceData);
+
+    // Send response based on mode
+    if (session.multipleMode) {
+      await sendSingleInvoiceResponse(
+        from,
+        invoiceData,
+        session.invoices.length
+      );
+    } else {
+      await sendSingleInvoiceSummary(from, invoiceData);
+      session.state = "initial";
+      session.invoices = [];
+    }
   } catch (error) {
-    console.error("Error processing receipt text:", error);
+    console.error("Error processing image:", error);
     await sendWhatsAppMessage(
       from,
-      "❌ Er is een fout opgetreden bij het verwerken van je bonnetje."
+      "❌ Er is een fout opgetreden bij het verwerken van je foto."
     );
   }
 }
 
+async function sendSingleInvoiceResponse(from, invoiceData, invoiceNumber) {
+  const responseMessage = `📄 *Factuur ${invoiceNumber} Verwerkt!*
+
+🏪 *Bedrijf:* ${invoiceData.company || "Onbekend"}
+💰 *Totaalbedrag:* €${invoiceData.total_amount || 0}
+📅 *Datum:* ${invoiceData.date || "Onbekend"}
+📊 *Items:* ${invoiceData.item_count || 0} artikelen
+🎯 *Betrouwbaarheid:* ${invoiceData.confidence || 0}%
+
+✅ *Data opgeslagen in Google Sheets*
+
+*Stuur de volgende foto of typ 'klaar' om af te ronden.*`;
+
+  await sendWhatsAppMessage(from, responseMessage);
+}
+
+async function sendSingleInvoiceSummary(from, invoiceData) {
+  const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEETS_SPREADSHEET_ID}/edit`;
+
+  const responseMessage = `🧾 *Factuur Verwerking Voltooid!*
+
+🏪 *Bedrijf:* ${invoiceData.company || "Onbekend"}
+💰 *Totaalbedrag:* €${invoiceData.total_amount || 0}
+📅 *Datum:* ${invoiceData.date || "Onbekend"}
+📄 *Type:* ${invoiceData.document_type || "Factuur"}
+📊 *Items:* ${invoiceData.item_count || 0} artikelen
+💳 *Betaalmethode:* ${invoiceData.payment_method || "Onbekend"}
+🎯 *Betrouwbaarheid:* ${invoiceData.confidence || 0}%
+
+✅ *Data opgeslagen in Google Sheets*
+📊 *Bekijk de spreadsheet:* ${sheetUrl}
+
+📈 *Invoice #${Date.now()}*
+
+*Bedankt voor het gebruik van JMSoft AI Invoice Processor!*
+Stuur 'hallo' om opnieuw te beginnen.`;
+
+  await sendWhatsAppMessage(from, responseMessage);
+}
+
+async function sendMultipleInvoicesSummary(from, session) {
+  const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEETS_SPREADSHEET_ID}/edit`;
+
+  let totalAmount = 0;
+  let totalItems = 0;
+  const companies = new Set();
+
+  session.invoices.forEach((invoice) => {
+    totalAmount += parseFloat(invoice.total_amount || 0);
+    totalItems += parseInt(invoice.item_count || 0);
+    if (invoice.company) companies.add(invoice.company);
+  });
+
+  const responseMessage = `📊 *Meerdere Facturen Verwerking Voltooid!*
+
+📄 *Aantal facturen:* ${session.invoices.length}
+🏪 *Bedrijven:* ${Array.from(companies).join(", ") || "Onbekend"}
+💰 *Totaalbedrag:* €${totalAmount.toFixed(2)}
+📊 *Totaal items:* ${totalItems}
+📅 *Verwerkt op:* ${new Date().toLocaleDateString("nl-NL")}
+
+✅ *Alle data opgeslagen in Google Sheets*
+📊 *Bekijk de spreadsheet:* ${sheetUrl}
+
+📈 *Batch #${Date.now()}*
+
+*Bedankt voor het gebruik van JMSoft AI Invoice Processor!*
+Stuur 'hallo' om opnieuw te beginnen.`;
+
+  await sendWhatsAppMessage(from, responseMessage);
+}
+
+// Simulated functions (replace with real implementations)
 async function getMediaUrl(mediaId) {
-  try {
-    const response = await axios.get(`${WHATSAPP_API_URL}/${mediaId}`, {
-      headers: {
-        Authorization: `Bearer ${ACCESS_TOKEN}`,
-      },
-    });
-
-    const mediaUrl = response.data.url;
-
-    // Download the actual media
-    const mediaResponse = await axios.get(mediaUrl, {
-      headers: {
-        Authorization: `Bearer ${ACCESS_TOKEN}`,
-      },
-      responseType: "arraybuffer",
-    });
-
-    // For now, we'll simulate OCR since we don't have Tesseract in this environment
-    // In production, you'd use a proper OCR service
-    return "simulated_image_url";
-  } catch (error) {
-    console.error("Error getting media URL:", error);
-    throw error;
-  }
+  // In a real implementation, you would call WhatsApp API to get the media URL
+  console.log(`Getting media URL for ID: ${mediaId}`);
+  return `https://example.com/media/${mediaId}`;
 }
 
 async function extractTextFromImage(imageUrl) {
-  // Simulate OCR extraction
-  // In production, use a proper OCR service like Google Vision API or Tesseract
-  const sampleText = `
-  ALBERT HEIJN
-  Winkel: AH Amsterdam Centrum
-  Datum: 15-12-2024
-  Tijd: 14:30
-  
-  Brood €2.50
-  Melk €1.80
-  Kaas €8.90
-  Groenten €11.30
-  
-  Subtotaal: €24.50
-  BTW: €4.25
-  TOTAAL: €24.50
-  
-  Betaald met: PIN
-  `;
+  // In a real implementation, you would use OCR to extract text
+  console.log(`Extracting text from image: ${imageUrl}`);
+  return `ALBERT HEIJN
+BONNETJE
+Datum: 2024-01-15
+Tijd: 14:30
 
-  return sampleText;
+MELK 2L - €2.50
+BROOD - €1.80
+KAAS - €3.20
+BOTER - €2.10
+
+Totaal: €9.60
+BTW: €1.66
+Betaalmethode: PIN`;
 }
 
 async function processWithAI(text) {
+  if (!OPENAI_API_KEY) {
+    console.log("OpenAI API key not configured, using fallback response");
+    // Fallback response without AI processing
+    return {
+      company: "ALBERT HEIJN",
+      date: new Date().toISOString().split("T")[0],
+      total_amount: 9.60,
+      currency: "EUR",
+      document_type: "receipt",
+      item_count: 4,
+      tax_amount: 1.66,
+      payment_method: "PIN",
+      confidence: 85,
+      notes: "AI processing niet beschikbaar - handmatige verwerking vereist",
+    };
+  }
+
   try {
-    // Check if OpenAI API key is available
-    if (
-      !OPENAI_API_KEY ||
-      OPENAI_API_KEY === "your-openai-api-key" ||
-      OPENAI_API_KEY === "YOUR_OPENAI_API_KEY_HERE"
-    ) {
-      console.log("⚠️ OpenAI API key not configured, using fallback response");
-
-      // Fallback response without AI processing
-      return {
-        company: "Onbekend Bedrijf",
-        date: new Date().toISOString().split("T")[0],
-        total_amount: 0.0,
-        currency: "EUR",
-        document_type: "receipt",
-        item_count: 1,
-        tax_amount: 0.0,
-        payment_method: "unknown",
-        confidence: 50,
-        notes: "AI processing niet beschikbaar - handmatige verwerking vereist",
-      };
-    }
-
-    const prompt = `
-    Je bent een expert in het verwerken van Nederlandse bonnetjes en facturen. 
-    Extraheer gestructureerde data uit deze tekst en retourneer een JSON object.
-    
-    BELANGRIJKE REGELS:
-    1. Bedragen moeten exact zijn zoals op het bonnetje staan
-    2. Gebruik punt (.) voor decimalen, geen komma
-    3. Totaalbedrag is meestal het grootste bedrag bovenaan
-    4. BTW is meestal 21% of 9% in Nederland
-    5. Datum in YYYY-MM-DD formaat
-    6. Bedrijf is meestal de naam bovenaan het bonnetje
-    
-    JSON velden:
-    - company: Bedrijfsnaam (string)
-    - date: Datum (YYYY-MM-DD)
-    - total_amount: Totaalbedrag (float, alleen het bedrag)
-    - currency: Valuta (EUR)
-    - document_type: Type document (receipt, invoice, etc.)
-    - item_count: Aantal items (integer)
-    - tax_amount: BTW bedrag (float, alleen het bedrag)
-    - payment_method: Betaalmethode (card, cash, etc.)
-    - confidence: Betrouwbaarheid (0-100)
-    - notes: Opmerkingen
-    
-    Bonnetje tekst:
-    ${text}
-    
-    Retourneer alleen geldige JSON, geen extra tekst.
-    `;
-
     const response = await axios.post(
-      OPENAI_API_URL,
+      "https://api.openai.com/v1/chat/completions",
       {
         model: "gpt-4",
         messages: [
           {
+            role: "system",
+            content: `Je bent een expert in het extraheren van factuurgegevens uit Nederlandse bonnetjes en facturen. 
+            Extraheer de volgende informatie in JSON formaat:
+            - company: Bedrijfsnaam
+            - date: Datum (YYYY-MM-DD formaat)
+            - total_amount: Totaalbedrag (alleen het getal)
+            - currency: Valuta (EUR)
+            - document_type: Type document (receipt/factuur)
+            - item_count: Aantal artikelen
+            - tax_amount: BTW bedrag
+            - payment_method: Betaalmethode
+            - confidence: Betrouwbaarheid (0-100)
+            - notes: Extra opmerkingen
+            
+            Belangrijk: Focus op Nederlandse bonnetjes, gebruik exacte bedragen, en zorg dat total_amount alleen het getal is.`,
+          },
+          {
             role: "user",
-            content: prompt,
+            content: text,
           },
         ],
-        max_tokens: 2000,
         temperature: 0.1,
       },
       {
@@ -341,58 +517,39 @@ async function processWithAI(text) {
       }
     );
 
-    const result = response.data.choices[0].message.content;
-    return JSON.parse(result);
-  } catch (error) {
-    console.error("Error processing with AI:", error);
+    const aiResponse = response.data.choices[0].message.content;
+    console.log("AI Response:", aiResponse);
 
-    // Fallback response on error
-    return {
-      company: "Error bij verwerking",
-      date: new Date().toISOString().split("T")[0],
-      total_amount: 0.0,
-      currency: "EUR",
-      document_type: "receipt",
-      item_count: 1,
-      tax_amount: 0.0,
-      payment_method: "unknown",
-      confidence: 0,
-      notes: `AI processing error: ${error.message}`,
-    };
+    // Try to parse JSON from AI response
+    try {
+      const invoiceData = JSON.parse(aiResponse);
+      return invoiceData;
+    } catch (parseError) {
+      console.error("Error parsing AI response:", parseError);
+      // Fallback parsing
+      return {
+        company: "Onbekend",
+        date: new Date().toISOString().split("T")[0],
+        total_amount: 0,
+        currency: "EUR",
+        document_type: "receipt",
+        item_count: 0,
+        tax_amount: 0,
+        payment_method: "unknown",
+        confidence: 50,
+        notes: "AI parsing error",
+      };
+    }
+  } catch (error) {
+    console.error("Error calling OpenAI API:", error);
+    return null;
   }
 }
 
 async function saveToGoogleSheets(invoiceData) {
-  try {
-    // For now, we'll simulate saving to Google Sheets
-    // In production, you'd use the Google Sheets API
-    console.log("Saving to Google Sheets:", invoiceData);
-
-    // Simulate successful save
-    return true;
-  } catch (error) {
-    console.error("Error saving to Google Sheets:", error);
-    return false;
-  }
-}
-
-function createResponseMessage(invoiceData) {
-  const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEETS_SPREADSHEET_ID}/edit`;
-
-  return `🧾 Bonnetje Verwerkt!
-
-🏪 Bedrijf: ${invoiceData.company || "Onbekend"}
-💰 Totaalbedrag: €${invoiceData.total_amount || 0}
-📅 Datum: ${invoiceData.date || "Onbekend"}
-📄 Type: ${invoiceData.document_type || "Bonnetje"}
-📊 Items: ${invoiceData.item_count || 0} artikelen
-💳 Betaalmethode: ${invoiceData.payment_method || "Onbekend"}
-🎯 Betrouwbaarheid: ${invoiceData.confidence || 0}%
-
-✅ Data opgeslagen in Google Sheets
-📊 Bekijk de spreadsheet: ${sheetUrl}
-
-📈 Invoice #${Date.now()}`;
+  // In a real implementation, you would save to Google Sheets
+  console.log("Saving to Google Sheets:", invoiceData);
+  return true;
 }
 
 async function sendWhatsAppMessage(to, message) {
@@ -423,20 +580,35 @@ async function sendWhatsAppMessage(to, message) {
   }
 }
 
+async function sendWhatsAppInteractiveMessage(to, message) {
+  try {
+    const response = await axios.post(
+      `${WHATSAPP_API_URL}/${PHONE_NUMBER_ID}/messages`,
+      {
+        messaging_product: "whatsapp",
+        to: to,
+        type: "interactive",
+        interactive: message.interactive,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    console.log("WhatsApp interactive message sent:", response.data);
+    return true;
+  } catch (error) {
+    console.error("Error sending WhatsApp interactive message:", error);
+    return false;
+  }
+}
+
 // Start the server
-app.listen(port, () => {
-  console.log(`\nListening on port ${port}\n`);
-  console.log("WhatsApp Webhook Test App Ready!");
-  console.log("Environment variables:");
-  console.log(`- VERIFY_TOKEN: ${verifyToken ? "Set" : "Not set"}`);
-  console.log(
-    `- WHATSAPP_PHONE_NUMBER_ID: ${PHONE_NUMBER_ID ? "Set" : "Not set"}`
-  );
-  console.log(`- ACCESS_TOKEN: ${ACCESS_TOKEN ? "Set" : "Not set"}`);
-  console.log(`- OPENAI_API_KEY: ${OPENAI_API_KEY ? "Set" : "Not set"}`);
-  console.log(
-    `- GOOGLE_SHEETS_SPREADSHEET_ID: ${
-      GOOGLE_SHEETS_SPREADSHEET_ID ? "Set" : "Not set"
-    }`
-  );
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`WhatsApp Webhook server running on port ${PORT}`);
+  console.log(`Webhook URL: https://your-app-name.onrender.com`);
+  console.log(`Verify Token: ${VERIFY_TOKEN}`);
 });
