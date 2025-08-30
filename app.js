@@ -322,19 +322,28 @@ Neem contact op via: *JMSoft.com*`;
   ) {
     // Setup Google Sheets tabs
     await sendWhatsAppMessage(from, "🔧 Google Sheets tabs worden opgezet...");
-    
+
     try {
       const setupResult = await setupGoogleSheetsHeaders();
       if (setupResult) {
-        await sendWhatsAppMessage(from, "✅ Google Sheets tabs succesvol opgezet!");
+        await sendWhatsAppMessage(
+          from,
+          "✅ Google Sheets tabs succesvol opgezet!"
+        );
       } else {
-        await sendWhatsAppMessage(from, "❌ Kon Google Sheets tabs niet opzetten. Controleer de configuratie.");
+        await sendWhatsAppMessage(
+          from,
+          "❌ Kon Google Sheets tabs niet opzetten. Controleer de configuratie."
+        );
       }
     } catch (error) {
       console.error("❌ Error setting up tabs:", error);
-      await sendWhatsAppMessage(from, "❌ Fout bij het opzetten van Google Sheets tabs.");
+      await sendWhatsAppMessage(
+        from,
+        "❌ Fout bij het opzetten van Google Sheets tabs."
+      );
     }
-    
+
     // Show menu after setup attempt
     await showMainMenu(from);
     session.state = "initial";
@@ -442,7 +451,7 @@ async function processImageMessage(message) {
             from,
             "❌ Kon data niet opslaan in Google Sheets. De Google Sheets tabs worden mogelijk nog opgezet. Probeer het over een paar minuten opnieuw."
           );
-          
+
           // Show menu even if save failed
           await showMainMenu(from);
           session.state = "initial";
@@ -454,7 +463,7 @@ async function processImageMessage(message) {
           from,
           "❌ Kon data niet opslaan in Google Sheets. Probeer het opnieuw of neem contact op met support."
         );
-        
+
         // Show menu even if save failed
         await showMainMenu(from);
         session.state = "initial";
@@ -484,7 +493,7 @@ async function processImageMessage(message) {
       from,
       "❌ Er is een fout opgetreden bij het verwerken van je foto. Probeer het opnieuw."
     );
-    
+
     // Always show menu after error
     await showMainMenu(from);
     session.state = "initial";

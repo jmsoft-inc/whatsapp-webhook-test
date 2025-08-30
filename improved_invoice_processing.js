@@ -75,6 +75,8 @@ async function processWithAI(text, invoiceNumber) {
               "subtotal": "Subtotaal (alleen het getal)",
               "tax_9": "BTW 9% (alleen het getal)",
               "tax_21": "BTW 21% (alleen het getal)",
+              "bonus_amount": "Bonus bedrag (alleen het getal, 0 als geen bonus)",
+              "emballage_amount": "Emballage bedrag (alleen het getal, 0 als geen emballage)",
               "currency": "EUR",
               "document_type": "receipt",
               "payment_method": "Betaalmethode (PIN, CONTANT, etc.)",
@@ -83,7 +85,8 @@ async function processWithAI(text, invoiceNumber) {
                   "name": "Productnaam",
                   "quantity": "Aantal",
                   "unit_price": "Prijs per stuk",
-                  "total_price": "Totaalprijs"
+                  "total_price": "Totaalprijs",
+                  "category": "Categorie (voeding, non-food, etc.)"
                 }
               ],
               "item_count": "Totaal aantal verschillende artikelen",
@@ -100,7 +103,9 @@ async function processWithAI(text, invoiceNumber) {
             - Zorg dat alle bedragen alleen getallen zijn (geen € of komma's)
             - Herken Albert Heijn specifieke patronen
             - Extraheer alle individuele items met hoeveelheden en prijzen
-            - Gebruik het meegegeven factuurnummer`,
+            - Herken subtotaal, bonus, emballage en BTW bedragen
+            - Gebruik het meegegeven factuurnummer
+            - Als subtotaal niet expliciet genoemd wordt, bereken het als total_amount - tax_9 - tax_21 - bonus_amount - emballage_amount`,
           },
           {
             role: "user",
@@ -174,6 +179,8 @@ function createFallbackResponse(text, invoiceNumber) {
     subtotal: total * 0.9,
     tax_9: total * 0.05,
     tax_21: total * 0.05,
+    bonus_amount: 0,
+    emballage_amount: 0,
     currency: "EUR",
     document_type: "receipt",
     payment_method: paymentMethod,
@@ -183,6 +190,7 @@ function createFallbackResponse(text, invoiceNumber) {
         quantity: "1",
         unit_price: total,
         total_price: total,
+        category: "voeding",
       },
     ],
     item_count: 1,
@@ -235,6 +243,11 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
       invoiceData.company || "Onbekend",
       invoiceData.date || new Date().toISOString().split("T")[0],
       invoiceData.time || "",
+      invoiceData.subtotal || 0,
+      invoiceData.tax_9 || 0,
+      invoiceData.tax_21 || 0,
+      invoiceData.bonus_amount || 0,
+      invoiceData.emballage_amount || 0,
       invoiceData.total_amount || 0,
       invoiceData.currency || "EUR",
       invoiceData.document_type || "receipt",
@@ -246,7 +259,7 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Invoices!A:L",
+      range: "Invoices!A:Q",
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       resource: {
@@ -262,6 +275,7 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
         invoiceData.company || "Onbekend",
         invoiceData.date || new Date().toISOString().split("T")[0],
         item.name || "Onbekend product",
+        item.category || "voeding",
         item.quantity || 1,
         item.unit_price || 0,
         item.total_price || 0,
@@ -274,7 +288,7 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
 
       await sheets.spreadsheets.values.append({
         spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-        range: "Detail Invoices!A:M",
+        range: "Detail Invoices!A:N",
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
         resource: {

@@ -85,6 +85,11 @@ async function setupGoogleSheetsTabs() {
       "Bedrijf",
       "Datum",
       "Tijd",
+      "Subtotaal",
+      "BTW 9%",
+      "BTW 21%",
+      "Bonus",
+      "Emballage",
       "Totaalbedrag",
       "Valuta",
       "Document Type",
@@ -96,7 +101,7 @@ async function setupGoogleSheetsTabs() {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Invoices!A1:L1",
+      range: "Invoices!A1:Q1",
       valueInputOption: "RAW",
       resource: {
         values: [invoicesHeaders],
@@ -112,6 +117,7 @@ async function setupGoogleSheetsTabs() {
       "Bedrijf",
       "Datum",
       "Productnaam",
+      "Categorie",
       "Hoeveelheid",
       "Prijs per stuk",
       "Totaalprijs",
@@ -124,7 +130,7 @@ async function setupGoogleSheetsTabs() {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Detail Invoices!A1:M1",
+      range: "Detail Invoices!A1:N1",
       valueInputOption: "RAW",
       resource: {
         values: [detailHeaders],
@@ -177,6 +183,54 @@ async function setupGoogleSheetsTabs() {
               textFormat: {
                 bold: true,
                 foregroundColor: { red: 1, green: 1, blue: 1 },
+              },
+            },
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat)",
+        },
+      },
+      // Format data rows with alternating colors
+      {
+        repeatCell: {
+          range: {
+            sheetId: spreadsheet.data.sheets.find(
+              (s) => s.properties.title === "Invoices"
+            )?.properties.sheetId,
+            startRowIndex: 1,
+            endRowIndex: 1000,
+            startColumnIndex: 0,
+            endColumnIndex: invoicesHeaders.length,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 0.98, green: 0.98, blue: 0.98 },
+              textFormat: {
+                bold: false,
+                foregroundColor: { red: 0, green: 0, blue: 0 },
+              },
+            },
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat)",
+        },
+      },
+      // Format Detail Invoices data rows
+      {
+        repeatCell: {
+          range: {
+            sheetId: spreadsheet.data.sheets.find(
+              (s) => s.properties.title === "Detail Invoices"
+            )?.properties.sheetId,
+            startRowIndex: 1,
+            endRowIndex: 1000,
+            startColumnIndex: 0,
+            endColumnIndex: detailHeaders.length,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 0.98, green: 0.98, blue: 0.98 },
+              textFormat: {
+                bold: false,
+                foregroundColor: { red: 0, green: 0, blue: 0 },
               },
             },
           },
