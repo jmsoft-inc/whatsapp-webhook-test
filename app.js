@@ -243,7 +243,7 @@ Helaas zijn er nog niet meerdere AI Agents beschikbaar die je verder kunnen help
 Neem contact op via: *JMSoft.com*`;
 
     await sendWhatsAppMessage(from, infoMessage);
-
+    
     // Show menu again after info
     await showMainMenu(from);
     session.state = "initial";
