@@ -8,9 +8,12 @@ const { google } = require("googleapis");
 async function setupGoogleSheetsTabs() {
   try {
     console.log("🔧 Setting up Google Sheets tabs...");
-    
+
     // Check environment variables
-    if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID || !process.env.GOOGLE_SHEETS_CREDENTIALS) {
+    if (
+      !process.env.GOOGLE_SHEETS_SPREADSHEET_ID ||
+      !process.env.GOOGLE_SHEETS_CREDENTIALS
+    ) {
       console.error("❌ Missing Google Sheets environment variables");
       return false;
     }
@@ -37,34 +40,39 @@ async function setupGoogleSheetsTabs() {
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
     });
 
-    console.log("📊 Current tabs:", spreadsheet.data.sheets.map(s => s.properties.title));
+    console.log(
+      "📊 Current tabs:",
+      spreadsheet.data.sheets.map((s) => s.properties.title)
+    );
 
     // Check if tabs exist, if not create them
-    const existingTabs = spreadsheet.data.sheets.map(s => s.properties.title);
+    const existingTabs = spreadsheet.data.sheets.map((s) => s.properties.title);
     const requiredTabs = ["Invoices", "Detail Invoices"];
-    const tabsToCreate = requiredTabs.filter(tab => !existingTabs.includes(tab));
+    const tabsToCreate = requiredTabs.filter(
+      (tab) => !existingTabs.includes(tab)
+    );
 
     if (tabsToCreate.length > 0) {
       console.log("📋 Creating missing tabs:", tabsToCreate);
-      
+
       // Create missing tabs
-      const requests = tabsToCreate.map(tabTitle => ({
+      const requests = tabsToCreate.map((tabTitle) => ({
         addSheet: {
           properties: {
             title: tabTitle,
             gridProperties: {
               rowCount: 1000,
-              columnCount: 20
-            }
-          }
-        }
+              columnCount: 20,
+            },
+          },
+        },
       }));
 
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
         resource: {
-          requests: requests
-        }
+          requests: requests,
+        },
       });
 
       console.log("✅ Created tabs:", tabsToCreate);
@@ -73,7 +81,7 @@ async function setupGoogleSheetsTabs() {
     // Setup Invoices tab headers
     const invoicesHeaders = [
       "Timestamp",
-      "Factuurnummer", 
+      "Factuurnummer",
       "Bedrijf",
       "Datum",
       "Tijd",
@@ -83,7 +91,7 @@ async function setupGoogleSheetsTabs() {
       "Aantal Items",
       "Betaalmethode",
       "Betrouwbaarheid",
-      "Opmerkingen"
+      "Opmerkingen",
     ];
 
     await sheets.spreadsheets.values.update({
@@ -101,7 +109,7 @@ async function setupGoogleSheetsTabs() {
     const detailHeaders = [
       "Timestamp",
       "Factuurnummer",
-      "Bedrijf", 
+      "Bedrijf",
       "Datum",
       "Productnaam",
       "Hoeveelheid",
@@ -111,7 +119,7 @@ async function setupGoogleSheetsTabs() {
       "Betaalmethode",
       "Kassa",
       "Transactie",
-      "Opmerkingen"
+      "Opmerkingen",
     ];
 
     await sheets.spreadsheets.values.update({
@@ -131,47 +139,57 @@ async function setupGoogleSheetsTabs() {
       {
         repeatCell: {
           range: {
-            sheetId: spreadsheet.data.sheets.find(s => s.properties.title === "Invoices")?.properties.sheetId,
+            sheetId: spreadsheet.data.sheets.find(
+              (s) => s.properties.title === "Invoices"
+            )?.properties.sheetId,
             startRowIndex: 0,
             endRowIndex: 1,
             startColumnIndex: 0,
-            endColumnIndex: invoicesHeaders.length
+            endColumnIndex: invoicesHeaders.length,
           },
           cell: {
             userEnteredFormat: {
               backgroundColor: { red: 0.2, green: 0.6, blue: 0.9 },
-              textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }
-            }
+              textFormat: {
+                bold: true,
+                foregroundColor: { red: 1, green: 1, blue: 1 },
+              },
+            },
           },
-          fields: "userEnteredFormat(backgroundColor,textFormat)"
-        }
+          fields: "userEnteredFormat(backgroundColor,textFormat)",
+        },
       },
       // Format Detail Invoices tab headers
       {
         repeatCell: {
           range: {
-            sheetId: spreadsheet.data.sheets.find(s => s.properties.title === "Detail Invoices")?.properties.sheetId,
+            sheetId: spreadsheet.data.sheets.find(
+              (s) => s.properties.title === "Detail Invoices"
+            )?.properties.sheetId,
             startRowIndex: 0,
             endRowIndex: 1,
             startColumnIndex: 0,
-            endColumnIndex: detailHeaders.length
+            endColumnIndex: detailHeaders.length,
           },
           cell: {
             userEnteredFormat: {
               backgroundColor: { red: 0.2, green: 0.6, blue: 0.9 },
-              textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }
-            }
+              textFormat: {
+                bold: true,
+                foregroundColor: { red: 1, green: 1, blue: 1 },
+              },
+            },
           },
-          fields: "userEnteredFormat(backgroundColor,textFormat)"
-        }
-      }
+          fields: "userEnteredFormat(backgroundColor,textFormat)",
+        },
+      },
     ];
 
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
       resource: {
-        requests: formatRequests
-      }
+        requests: formatRequests,
+      },
     });
 
     console.log("✅ Applied formatting to headers");
@@ -182,31 +200,35 @@ async function setupGoogleSheetsTabs() {
       {
         autoResizeDimensions: {
           dimensions: {
-            sheetId: spreadsheet.data.sheets.find(s => s.properties.title === "Invoices")?.properties.sheetId,
+            sheetId: spreadsheet.data.sheets.find(
+              (s) => s.properties.title === "Invoices"
+            )?.properties.sheetId,
             dimension: "COLUMNS",
             startIndex: 0,
-            endIndex: invoicesHeaders.length
-          }
-        }
+            endIndex: invoicesHeaders.length,
+          },
+        },
       },
       // Auto-resize Detail Invoices tab
       {
         autoResizeDimensions: {
           dimensions: {
-            sheetId: spreadsheet.data.sheets.find(s => s.properties.title === "Detail Invoices")?.properties.sheetId,
+            sheetId: spreadsheet.data.sheets.find(
+              (s) => s.properties.title === "Detail Invoices"
+            )?.properties.sheetId,
             dimension: "COLUMNS",
             startIndex: 0,
-            endIndex: detailHeaders.length
-          }
-        }
-      }
+            endIndex: detailHeaders.length,
+          },
+        },
+      },
     ];
 
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
       resource: {
-        requests: autoResizeRequests
-      }
+        requests: autoResizeRequests,
+      },
     });
 
     console.log("✅ Auto-resized columns");
@@ -215,7 +237,7 @@ async function setupGoogleSheetsTabs() {
     console.log("📊 Available tabs:");
     console.log("   • Invoices - Overzicht van alle facturen");
     console.log("   • Detail Invoices - Gedetailleerde productinformatie");
-    
+
     return true;
   } catch (error) {
     console.error("❌ Error setting up Google Sheets tabs:", error);
@@ -236,7 +258,7 @@ async function testSetup() {
 
 module.exports = {
   setupGoogleSheetsTabs,
-  testSetup
+  testSetup,
 };
 
 // Run test if called directly
