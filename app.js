@@ -89,11 +89,12 @@ async function processTextMessage(message) {
   if (!text) return;
 
   // Check if it's a receipt/invoice text
-  if (text.toLowerCase().includes("bonnetje") || 
-      text.toLowerCase().includes("factuur") || 
-      text.toLowerCase().includes("receipt") ||
-      text.toLowerCase().includes("invoice")) {
-    
+  if (
+    text.toLowerCase().includes("bonnetje") ||
+    text.toLowerCase().includes("factuur") ||
+    text.toLowerCase().includes("receipt") ||
+    text.toLowerCase().includes("invoice")
+  ) {
     console.log("Processing receipt text...");
     await processReceiptText(from, text);
   } else {
@@ -119,7 +120,10 @@ async function processImageMessage(message) {
   const image = message.image;
 
   if (!image?.id) {
-    await sendWhatsAppMessage(from, "❌ Kon de afbeelding niet verwerken. Probeer opnieuw.");
+    await sendWhatsAppMessage(
+      from,
+      "❌ Kon de afbeelding niet verwerken. Probeer opnieuw."
+    );
     return;
   }
 
@@ -129,9 +133,12 @@ async function processImageMessage(message) {
     // Download image
     const imageUrl = await getMediaUrl(image.id);
     const imageText = await extractTextFromImage(imageUrl);
-    
+
     if (!imageText) {
-      await sendWhatsAppMessage(from, "❌ Kon geen tekst uit de afbeelding extraheren. Zorg dat het bonnetje duidelijk leesbaar is.");
+      await sendWhatsAppMessage(
+        from,
+        "❌ Kon geen tekst uit de afbeelding extraheren. Zorg dat het bonnetje duidelijk leesbaar is."
+      );
       return;
     }
 
@@ -139,27 +146,35 @@ async function processImageMessage(message) {
 
     // Process with AI
     const invoiceData = await processWithAI(imageText);
-    
+
     if (!invoiceData) {
-      await sendWhatsAppMessage(from, "❌ Kon de bonnetje data niet verwerken. Probeer een duidelijkere foto.");
+      await sendWhatsAppMessage(
+        from,
+        "❌ Kon de bonnetje data niet verwerken. Probeer een duidelijkere foto."
+      );
       return;
     }
 
     // Save to Google Sheets
     const saved = await saveToGoogleSheets(invoiceData);
-    
+
     if (!saved) {
-      await sendWhatsAppMessage(from, "❌ Kon data niet opslaan in Google Sheets.");
+      await sendWhatsAppMessage(
+        from,
+        "❌ Kon data niet opslaan in Google Sheets."
+      );
       return;
     }
 
     // Send response
     const responseMessage = createResponseMessage(invoiceData);
     await sendWhatsAppMessage(from, responseMessage);
-
   } catch (error) {
     console.error("Error processing image:", error);
-    await sendWhatsAppMessage(from, "❌ Er is een fout opgetreden bij het verwerken van je bonnetje. Probeer het later opnieuw.");
+    await sendWhatsAppMessage(
+      from,
+      "❌ Er is een fout opgetreden bij het verwerken van je bonnetje. Probeer het later opnieuw."
+    );
   }
 }
 
@@ -167,27 +182,35 @@ async function processReceiptText(from, text) {
   try {
     // Process with AI
     const invoiceData = await processWithAI(text);
-    
+
     if (!invoiceData) {
-      await sendWhatsAppMessage(from, "❌ Kon de bonnetje data niet verwerken.");
+      await sendWhatsAppMessage(
+        from,
+        "❌ Kon de bonnetje data niet verwerken."
+      );
       return;
     }
 
     // Save to Google Sheets
     const saved = await saveToGoogleSheets(invoiceData);
-    
+
     if (!saved) {
-      await sendWhatsAppMessage(from, "❌ Kon data niet opslaan in Google Sheets.");
+      await sendWhatsAppMessage(
+        from,
+        "❌ Kon data niet opslaan in Google Sheets."
+      );
       return;
     }
 
     // Send response
     const responseMessage = createResponseMessage(invoiceData);
     await sendWhatsAppMessage(from, responseMessage);
-
   } catch (error) {
     console.error("Error processing receipt text:", error);
-    await sendWhatsAppMessage(from, "❌ Er is een fout opgetreden bij het verwerken van je bonnetje.");
+    await sendWhatsAppMessage(
+      from,
+      "❌ Er is een fout opgetreden bij het verwerken van je bonnetje."
+    );
   }
 }
 
@@ -195,18 +218,18 @@ async function getMediaUrl(mediaId) {
   try {
     const response = await axios.get(`${WHATSAPP_API_URL}/${mediaId}`, {
       headers: {
-        'Authorization': `Bearer ${ACCESS_TOKEN}`
-      }
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
+      },
     });
 
     const mediaUrl = response.data.url;
-    
+
     // Download the actual media
     const mediaResponse = await axios.get(mediaUrl, {
       headers: {
-        'Authorization': `Bearer ${ACCESS_TOKEN}`
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
       },
-      responseType: 'arraybuffer'
+      responseType: "arraybuffer",
     });
 
     // For now, we'll simulate OCR since we don't have Tesseract in this environment
@@ -238,7 +261,7 @@ async function extractTextFromImage(imageUrl) {
   
   Betaald met: PIN
   `;
-  
+
   return sampleText;
 }
 
@@ -274,22 +297,26 @@ async function processWithAI(text) {
     Retourneer alleen geldige JSON, geen extra tekst.
     `;
 
-    const response = await axios.post(OPENAI_API_URL, {
-      model: "gpt-4",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 2000,
-      temperature: 0.1
-    }, {
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
+    const response = await axios.post(
+      OPENAI_API_URL,
+      {
+        model: "gpt-4",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        max_tokens: 2000,
+        temperature: 0.1,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
       }
-    });
+    );
 
     const result = response.data.choices[0].message.content;
     return JSON.parse(result);
@@ -304,7 +331,7 @@ async function saveToGoogleSheets(invoiceData) {
     // For now, we'll simulate saving to Google Sheets
     // In production, you'd use the Google Sheets API
     console.log("Saving to Google Sheets:", invoiceData);
-    
+
     // Simulate successful save
     return true;
   } catch (error) {
@@ -315,15 +342,15 @@ async function saveToGoogleSheets(invoiceData) {
 
 function createResponseMessage(invoiceData) {
   const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEETS_SPREADSHEET_ID}/edit`;
-  
+
   return `🧾 Bonnetje Verwerkt!
 
-🏪 Bedrijf: ${invoiceData.company || 'Onbekend'}
+🏪 Bedrijf: ${invoiceData.company || "Onbekend"}
 💰 Totaalbedrag: €${invoiceData.total_amount || 0}
-📅 Datum: ${invoiceData.date || 'Onbekend'}
-📄 Type: ${invoiceData.document_type || 'Bonnetje'}
+📅 Datum: ${invoiceData.date || "Onbekend"}
+📄 Type: ${invoiceData.document_type || "Bonnetje"}
 📊 Items: ${invoiceData.item_count || 0} artikelen
-💳 Betaalmethode: ${invoiceData.payment_method || 'Onbekend'}
+💳 Betaalmethode: ${invoiceData.payment_method || "Onbekend"}
 🎯 Betrouwbaarheid: ${invoiceData.confidence || 0}%
 
 ✅ Data opgeslagen in Google Sheets
@@ -334,19 +361,23 @@ function createResponseMessage(invoiceData) {
 
 async function sendWhatsAppMessage(to, message) {
   try {
-    const response = await axios.post(`${WHATSAPP_API_URL}/${PHONE_NUMBER_ID}/messages`, {
-      messaging_product: "whatsapp",
-      to: to,
-      type: "text",
-      text: {
-        body: message
+    const response = await axios.post(
+      `${WHATSAPP_API_URL}/${PHONE_NUMBER_ID}/messages`,
+      {
+        messaging_product: "whatsapp",
+        to: to,
+        type: "text",
+        text: {
+          body: message,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
       }
-    }, {
-      headers: {
-        'Authorization': `Bearer ${ACCESS_TOKEN}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    );
 
     console.log("WhatsApp message sent:", response.data);
     return true;
@@ -361,9 +392,15 @@ app.listen(port, () => {
   console.log(`\nListening on port ${port}\n`);
   console.log("WhatsApp Webhook Test App Ready!");
   console.log("Environment variables:");
-  console.log(`- VERIFY_TOKEN: ${verifyToken ? 'Set' : 'Not set'}`);
-  console.log(`- WHATSAPP_PHONE_NUMBER_ID: ${PHONE_NUMBER_ID ? 'Set' : 'Not set'}`);
-  console.log(`- ACCESS_TOKEN: ${ACCESS_TOKEN ? 'Set' : 'Not set'}`);
-  console.log(`- OPENAI_API_KEY: ${OPENAI_API_KEY ? 'Set' : 'Not set'}`);
-  console.log(`- GOOGLE_SHEETS_SPREADSHEET_ID: ${GOOGLE_SHEETS_SPREADSHEET_ID ? 'Set' : 'Not set'}`);
+  console.log(`- VERIFY_TOKEN: ${verifyToken ? "Set" : "Not set"}`);
+  console.log(
+    `- WHATSAPP_PHONE_NUMBER_ID: ${PHONE_NUMBER_ID ? "Set" : "Not set"}`
+  );
+  console.log(`- ACCESS_TOKEN: ${ACCESS_TOKEN ? "Set" : "Not set"}`);
+  console.log(`- OPENAI_API_KEY: ${OPENAI_API_KEY ? "Set" : "Not set"}`);
+  console.log(
+    `- GOOGLE_SHEETS_SPREADSHEET_ID: ${
+      GOOGLE_SHEETS_SPREADSHEET_ID ? "Set" : "Not set"
+    }`
+  );
 });
