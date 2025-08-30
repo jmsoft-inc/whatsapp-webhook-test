@@ -12,6 +12,13 @@ const {
   setupGoogleSheetsHeaders,
 } = require("./improved_invoice_processing");
 
+// Import image storage
+const {
+  saveReceiptImage,
+  createReceiptViewer,
+  createReceiptsList
+} = require("./image_storage");
+
 // Create an Express app
 const app = express();
 
@@ -42,6 +49,22 @@ const userSessions = new Map();
 app.get("/", (req, res) => {
   res.send("WhatsApp Webhook is running!");
 });
+
+// Route for viewing receipts list
+app.get("/receipts", (req, res) => {
+  const html = createReceiptsList();
+  res.send(html);
+});
+
+// Route for viewing individual receipt
+app.get("/receipt/:invoiceNumber", (req, res) => {
+  const invoiceNumber = req.params.invoiceNumber;
+  const html = createReceiptViewer(invoiceNumber);
+  res.send(html);
+});
+
+// Route for serving receipt images
+app.use("/receipt_images", express.static(path.join(__dirname, "receipt_images")));
 
 // Route for POST requests (webhook events)
 app.post("/", async (req, res) => {
@@ -413,9 +436,17 @@ async function processImageMessage(message) {
     const invoiceNumber = generateInvoiceNumber();
     console.log("📄 Generated invoice number:", invoiceNumber);
 
-    // Simulate getting media URL
+    // Get media URL from WhatsApp
     const mediaUrl = await getMediaUrl(message.image.id);
     console.log("📷 Media URL:", mediaUrl);
+
+    // Save the receipt image
+    const imageResult = await saveReceiptImage(mediaUrl, invoiceNumber);
+    if (imageResult.success) {
+      console.log("📸 Receipt image saved:", imageResult.filename);
+    } else {
+      console.log("⚠️ Could not save receipt image:", imageResult.error);
+    }
 
     // Extract text from image using improved OCR
     const extractedText = await extractTextFromImage(mediaUrl);
@@ -582,11 +613,27 @@ async function sendMultipleInvoicesSummary(from, session) {
   await showMainMenu(from);
 }
 
-// Simulated functions (replace with real implementations)
+// Get media URL from WhatsApp API
 async function getMediaUrl(mediaId) {
-  // In a real implementation, you would call WhatsApp API to get the media URL
-  console.log(`Getting media URL for ID: ${mediaId}`);
-  return `https://example.com/media/${mediaId}`;
+  try {
+    console.log(`📥 Getting media URL for ID: ${mediaId}`);
+    
+    const response = await axios.get(
+      `${WHATSAPP_API_URL}/${PHONE_NUMBER_ID}/media/${mediaId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${ACCESS_TOKEN}`,
+        },
+      }
+    );
+
+    console.log("📥 Media URL response:", response.data);
+    return response.data.url;
+  } catch (error) {
+    console.error("❌ Error getting media URL:", error.message);
+    // Fallback to simulated URL for testing
+    return `https://example.com/media/${mediaId}`;
+  }
 }
 
 async function saveToGoogleSheets(invoiceData) {

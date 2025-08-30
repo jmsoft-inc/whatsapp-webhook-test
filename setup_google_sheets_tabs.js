@@ -90,6 +90,8 @@ async function setupGoogleSheetsTabs() {
       "BTW 21%",
       "Bonus",
       "Emballage",
+      "Voordeel",
+      "Koopzegels",
       "Totaalbedrag",
       "Valuta",
       "Document Type",
@@ -101,7 +103,7 @@ async function setupGoogleSheetsTabs() {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Invoices!A1:Q1",
+      range: "Invoices!A1:S1",
       valueInputOption: "RAW",
       resource: {
         values: [invoicesHeaders],
@@ -121,6 +123,7 @@ async function setupGoogleSheetsTabs() {
       "Hoeveelheid",
       "Prijs per stuk",
       "Totaalprijs",
+      "Bonus",
       "Valuta",
       "Betaalmethode",
       "Kassa",
@@ -130,7 +133,7 @@ async function setupGoogleSheetsTabs() {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Detail Invoices!A1:N1",
+      range: "Detail Invoices!A1:O1",
       valueInputOption: "RAW",
       resource: {
         values: [detailHeaders],

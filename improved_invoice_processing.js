@@ -77,6 +77,8 @@ async function processWithAI(text, invoiceNumber) {
               "tax_21": "BTW 21% (alleen het getal)",
               "bonus_amount": "Bonus bedrag (alleen het getal, 0 als geen bonus)",
               "emballage_amount": "Emballage bedrag (alleen het getal, 0 als geen emballage)",
+              "voordeel_amount": "Voordeel bedrag (alleen het getal, 0 als geen voordeel)",
+              "koopzegels_amount": "Koopzegels bedrag (alleen het getal, 0 als geen koopzegels)",
               "currency": "EUR",
               "document_type": "receipt",
               "payment_method": "Betaalmethode (PIN, CONTANT, etc.)",
@@ -86,7 +88,8 @@ async function processWithAI(text, invoiceNumber) {
                   "quantity": "Aantal",
                   "unit_price": "Prijs per stuk",
                   "total_price": "Totaalprijs",
-                  "category": "Categorie (voeding, non-food, etc.)"
+                  "category": "Categorie (voeding, non-food, etc.)",
+                  "bonus": "Bonus info (ja/nee/onbekend)"
                 }
               ],
               "item_count": "Totaal aantal verschillende artikelen",
@@ -103,9 +106,12 @@ async function processWithAI(text, invoiceNumber) {
             - Zorg dat alle bedragen alleen getallen zijn (geen € of komma's)
             - Herken Albert Heijn specifieke patronen
             - Extraheer alle individuele items met hoeveelheden en prijzen
-            - Herken subtotaal, bonus, emballage en BTW bedragen
+            - Herken subtotaal, bonus, emballage, voordeel, koopzegels en BTW bedragen
             - Gebruik het meegegeven factuurnummer
-            - Als subtotaal niet expliciet genoemd wordt, bereken het als total_amount - tax_9 - tax_21 - bonus_amount - emballage_amount`,
+            - Als subtotaal niet expliciet genoemd wordt, bereken het als total_amount - tax_9 - tax_21 - bonus_amount - emballage_amount - voordeel_amount - koopzegels_amount
+            - Let op: emballage kan ook "statiegeld" genoemd worden
+            - Let op: voordeel kan ook "korting" of "actie" genoemd worden
+            - Let op: koopzegels kunnen ook "zegels" genoemd worden`,
           },
           {
             role: "user",
@@ -181,6 +187,8 @@ function createFallbackResponse(text, invoiceNumber) {
     tax_21: total * 0.05,
     bonus_amount: 0,
     emballage_amount: 0,
+    voordeel_amount: 0,
+    koopzegels_amount: 0,
     currency: "EUR",
     document_type: "receipt",
     payment_method: paymentMethod,
@@ -191,6 +199,7 @@ function createFallbackResponse(text, invoiceNumber) {
         unit_price: total,
         total_price: total,
         category: "voeding",
+        bonus: "onbekend",
       },
     ],
     item_count: 1,
@@ -248,6 +257,8 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
       invoiceData.tax_21 || 0,
       invoiceData.bonus_amount || 0,
       invoiceData.emballage_amount || 0,
+      invoiceData.voordeel_amount || 0,
+      invoiceData.koopzegels_amount || 0,
       invoiceData.total_amount || 0,
       invoiceData.currency || "EUR",
       invoiceData.document_type || "receipt",
@@ -259,7 +270,7 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Invoices!A:Q",
+      range: "Invoices!A:S",
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       resource: {
@@ -279,6 +290,7 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
         item.quantity || 1,
         item.unit_price || 0,
         item.total_price || 0,
+        item.bonus || "onbekend",
         invoiceData.currency || "EUR",
         invoiceData.payment_method || "unknown",
         invoiceData.store_info?.kassa || "",
@@ -288,7 +300,7 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
 
       await sheets.spreadsheets.values.append({
         spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-        range: "Detail Invoices!A:N",
+        range: "Detail Invoices!A:O",
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
         resource: {
