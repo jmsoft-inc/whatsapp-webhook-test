@@ -1,6 +1,7 @@
 // Import Express.js
 const express = require("express");
 const axios = require("axios");
+const { google } = require("googleapis");
 
 // Create an Express app
 const app = express();
@@ -611,9 +612,75 @@ async function processWithAI(text) {
 }
 
 async function saveToGoogleSheets(invoiceData) {
-  // In a real implementation, you would save to Google Sheets
-  console.log("Saving to Google Sheets:", invoiceData);
-  return true;
+  try {
+    console.log("🔄 Starting Google Sheets save...");
+    console.log("📋 Invoice data:", JSON.stringify(invoiceData, null, 2));
+
+    // Check if we have the required environment variables
+    if (!GOOGLE_SHEETS_SPREADSHEET_ID || !GOOGLE_SHEETS_CREDENTIALS) {
+      console.error("❌ Missing Google Sheets environment variables");
+      console.error("GOOGLE_SHEETS_SPREADSHEET_ID:", !!GOOGLE_SHEETS_SPREADSHEET_ID);
+      console.error("GOOGLE_SHEETS_CREDENTIALS:", !!GOOGLE_SHEETS_CREDENTIALS);
+      return false;
+    }
+
+    // Parse the credentials
+    let credentials;
+    try {
+      credentials = JSON.parse(GOOGLE_SHEETS_CREDENTIALS);
+    } catch (error) {
+      console.error("❌ Error parsing Google Sheets credentials:", error);
+      return false;
+    }
+
+    // Create Google Sheets client
+    const auth = new google.auth.GoogleAuth({
+      credentials: credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // Prepare the row data
+    const rowData = [
+      new Date().toISOString(), // Timestamp
+      invoiceData.company || "Onbekend",
+      invoiceData.date || new Date().toISOString().split("T")[0],
+      invoiceData.total_amount || 0,
+      invoiceData.currency || "EUR",
+      invoiceData.document_type || "receipt",
+      invoiceData.item_count || 0,
+      invoiceData.tax_amount || 0,
+      invoiceData.payment_method || "unknown",
+      invoiceData.confidence || 0,
+      invoiceData.notes || "",
+    ];
+
+    console.log("📝 Row data to insert:", rowData);
+
+    // Append the data to the sheet
+    const response = await sheets.spreadsheets.values.append({
+      spreadsheetId: GOOGLE_SHEETS_SPREADSHEET_ID,
+      range: 'Invoices!A:K', // Assuming headers are in row 1
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      resource: {
+        values: [rowData],
+      },
+    });
+
+    console.log("✅ Successfully saved to Google Sheets");
+    console.log("📊 Response:", response.data);
+    return true;
+
+  } catch (error) {
+    console.error("❌ Error saving to Google Sheets:", error);
+    console.error("❌ Error details:", error.message);
+    if (error.response) {
+      console.error("❌ API Error:", error.response.data);
+    }
+    return false;
+  }
 }
 
 async function sendWhatsAppMessage(to, message) {
