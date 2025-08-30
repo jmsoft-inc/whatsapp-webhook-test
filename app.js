@@ -3,6 +3,15 @@ const express = require("express");
 const axios = require("axios");
 const { google } = require("googleapis");
 
+// Import improved invoice processing
+const {
+  generateInvoiceNumber,
+  extractTextFromImage,
+  processWithAI,
+  saveDetailedInvoiceToSheets,
+  setupGoogleSheetsHeaders
+} = require("./improved_invoice_processing");
+
 // Create an Express app
 const app = express();
 
@@ -358,7 +367,7 @@ async function handleInvoiceSubmission(from, text, session) {
 
 async function processImageMessage(message) {
   const from = message.from;
-  console.log("Processing image message...");
+  console.log("🖼️ Processing image message...");
 
   // Get user session
   let session = userSessions.get(from);
@@ -368,17 +377,21 @@ async function processImageMessage(message) {
   }
 
   try {
+    // Generate unique invoice number
+    const invoiceNumber = generateInvoiceNumber();
+    console.log("📄 Generated invoice number:", invoiceNumber);
+
     // Simulate getting media URL
     const mediaUrl = await getMediaUrl(message.image.id);
-    console.log("Media URL:", mediaUrl);
+    console.log("📷 Media URL:", mediaUrl);
 
-    // Simulate OCR text extraction
+    // Extract text from image using improved OCR
     const extractedText = await extractTextFromImage(mediaUrl);
-    console.log("Extracted text:", extractedText);
+    console.log("📝 Extracted text:", extractedText);
 
-    // Process with AI
-    const invoiceData = await processWithAI(extractedText);
-    console.log("AI processed data:", invoiceData);
+    // Process with improved AI
+    const invoiceData = await processWithAI(extractedText, invoiceNumber);
+    console.log("🤖 AI processed data:", invoiceData);
 
     if (!invoiceData) {
       await sendWhatsAppMessage(
@@ -388,9 +401,9 @@ async function processImageMessage(message) {
       return;
     }
 
-    // Save to Google Sheets
-    const saved = await saveToGoogleSheets(invoiceData);
-    console.log("Saved to sheets:", saved);
+    // Save detailed data to Google Sheets
+    const saved = await saveDetailedInvoiceToSheets(invoiceData);
+    console.log("💾 Saved to sheets:", saved);
 
     if (!saved) {
       await sendWhatsAppMessage(
@@ -417,7 +430,7 @@ async function processImageMessage(message) {
       session.invoices = [];
     }
   } catch (error) {
-    console.error("Error processing image:", error);
+    console.error("❌ Error processing image:", error);
     await sendWhatsAppMessage(
       from,
       "❌ Er is een fout opgetreden bij het verwerken van je foto."
@@ -428,10 +441,13 @@ async function processImageMessage(message) {
 async function sendSingleInvoiceResponse(from, invoiceData, invoiceNumber) {
   const responseMessage = `📄 *Factuur ${invoiceNumber} Verwerkt!*
 
+🔢 *Factuurnummer:* ${invoiceData.invoice_number || "Onbekend"}
 🏪 *Bedrijf:* ${invoiceData.company || "Onbekend"}
 💰 *Totaalbedrag:* €${invoiceData.total_amount || 0}
 📅 *Datum:* ${invoiceData.date || "Onbekend"}
+🕐 *Tijd:* ${invoiceData.time || "Onbekend"}
 📊 *Items:* ${invoiceData.item_count || 0} artikelen
+💳 *Betaalmethode:* ${invoiceData.payment_method || "Onbekend"}
 🎯 *Betrouwbaarheid:* ${invoiceData.confidence || 0}%
 
 ✅ *Data opgeslagen in Google Sheets*
@@ -446,10 +462,11 @@ async function sendSingleInvoiceSummary(from, invoiceData) {
 
   const responseMessage = `🧾 *Factuur Verwerking Voltooid!*
 
+🔢 *Factuurnummer:* ${invoiceData.invoice_number || "Onbekend"}
 🏪 *Bedrijf:* ${invoiceData.company || "Onbekend"}
 💰 *Totaalbedrag:* €${invoiceData.total_amount || 0}
 📅 *Datum:* ${invoiceData.date || "Onbekend"}
-📄 *Type:* ${invoiceData.document_type || "Factuur"}
+🕐 *Tijd:* ${invoiceData.time || "Onbekend"}
 📊 *Items:* ${invoiceData.item_count || 0} artikelen
 💳 *Betaalmethode:* ${invoiceData.payment_method || "Onbekend"}
 🎯 *Betrouwbaarheid:* ${invoiceData.confidence || 0}%
@@ -457,7 +474,9 @@ async function sendSingleInvoiceSummary(from, invoiceData) {
 ✅ *Data opgeslagen in Google Sheets*
 📊 *Bekijk de spreadsheet:* ${sheetUrl}
 
-📈 *Invoice #${Date.now()}*
+📋 *Twee tabs beschikbaar:*
+• *Invoices:* Overzicht van alle facturen
+• *Detail Invoices:* Gedetailleerde productinformatie per factuur
 
 *Bedankt voor het gebruik van JMSoft AI Invoice Processor!*`;
 
@@ -508,108 +527,9 @@ async function getMediaUrl(mediaId) {
   return `https://example.com/media/${mediaId}`;
 }
 
-async function extractTextFromImage(imageUrl) {
-  // In a real implementation, you would use OCR to extract text
-  console.log(`Extracting text from image: ${imageUrl}`);
-  return `ALBERT HEIJN
-BONNETJE
-Datum: 2024-01-15
-Tijd: 14:30
 
-MELK 2L - €2.50
-BROOD - €1.80
-KAAS - €3.20
-BOTER - €2.10
 
-Totaal: €9.60
-BTW: €1.66
-Betaalmethode: PIN`;
-}
 
-async function processWithAI(text) {
-  if (!OPENAI_API_KEY) {
-    console.log("OpenAI API key not configured, using fallback response");
-    // Fallback response without AI processing
-    return {
-      company: "ALBERT HEIJN",
-      date: new Date().toISOString().split("T")[0],
-      total_amount: 9.6,
-      currency: "EUR",
-      document_type: "receipt",
-      item_count: 4,
-      tax_amount: 1.66,
-      payment_method: "PIN",
-      confidence: 85,
-      notes: "AI processing niet beschikbaar - handmatige verwerking vereist",
-    };
-  }
-
-  try {
-    const response = await axios.post(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: `Je bent een expert in het extraheren van factuurgegevens uit Nederlandse bonnetjes en facturen. 
-            Extraheer de volgende informatie in JSON formaat:
-            - company: Bedrijfsnaam
-            - date: Datum (YYYY-MM-DD formaat)
-            - total_amount: Totaalbedrag (alleen het getal)
-            - currency: Valuta (EUR)
-            - document_type: Type document (receipt/factuur)
-            - item_count: Aantal artikelen
-            - tax_amount: BTW bedrag
-            - payment_method: Betaalmethode
-            - confidence: Betrouwbaarheid (0-100)
-            - notes: Extra opmerkingen
-            
-            Belangrijk: Focus op Nederlandse bonnetjes, gebruik exacte bedragen, en zorg dat total_amount alleen het getal is.`,
-          },
-          {
-            role: "user",
-            content: text,
-          },
-        ],
-        temperature: 0.1,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const aiResponse = response.data.choices[0].message.content;
-    console.log("AI Response:", aiResponse);
-
-    // Try to parse JSON from AI response
-    try {
-      const invoiceData = JSON.parse(aiResponse);
-      return invoiceData;
-    } catch (parseError) {
-      console.error("Error parsing AI response:", parseError);
-      // Fallback parsing
-      return {
-        company: "Onbekend",
-        date: new Date().toISOString().split("T")[0],
-        total_amount: 0,
-        currency: "EUR",
-        document_type: "receipt",
-        item_count: 0,
-        tax_amount: 0,
-        payment_method: "unknown",
-        confidence: 50,
-        notes: "AI parsing error",
-      };
-    }
-  } catch (error) {
-    console.error("Error calling OpenAI API:", error);
-    return null;
-  }
-}
 
 async function saveToGoogleSheets(invoiceData) {
   try {
@@ -743,8 +663,16 @@ async function sendWhatsAppInteractiveMessage(to, message) {
 
 // Start the server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`WhatsApp Webhook server running on port ${PORT}`);
   console.log(`Webhook URL: https://your-app-name.onrender.com`);
   console.log(`Verify Token: ${verifyToken}`);
+  
+  // Setup Google Sheets headers on startup
+  try {
+    console.log("🔧 Setting up Google Sheets headers...");
+    await setupGoogleSheetsHeaders();
+  } catch (error) {
+    console.error("❌ Error setting up Google Sheets headers:", error);
+  }
 });
