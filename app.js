@@ -2,6 +2,7 @@
 const express = require("express");
 const axios = require("axios");
 const { google } = require("googleapis");
+const path = require("path");
 
 // Import improved invoice processing
 const {
@@ -16,7 +17,7 @@ const {
 const {
   saveReceiptImage,
   createReceiptViewer,
-  createReceiptsList
+  createReceiptsList,
 } = require("./image_storage");
 
 // Create an Express app
@@ -64,7 +65,10 @@ app.get("/receipt/:invoiceNumber", (req, res) => {
 });
 
 // Route for serving receipt images
-app.use("/receipt_images", express.static(path.join(__dirname, "receipt_images")));
+app.use(
+  "/receipt_images",
+  express.static(path.join(__dirname, "receipt_images"))
+);
 
 // Route for POST requests (webhook events)
 app.post("/", async (req, res) => {
@@ -617,7 +621,7 @@ async function sendMultipleInvoicesSummary(from, session) {
 async function getMediaUrl(mediaId) {
   try {
     console.log(`📥 Getting media URL for ID: ${mediaId}`);
-    
+
     const response = await axios.get(
       `${WHATSAPP_API_URL}/${PHONE_NUMBER_ID}/media/${mediaId}`,
       {
