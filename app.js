@@ -619,7 +619,10 @@ async function saveToGoogleSheets(invoiceData) {
     // Check if we have the required environment variables
     if (!GOOGLE_SHEETS_SPREADSHEET_ID || !GOOGLE_SHEETS_CREDENTIALS) {
       console.error("❌ Missing Google Sheets environment variables");
-      console.error("GOOGLE_SHEETS_SPREADSHEET_ID:", !!GOOGLE_SHEETS_SPREADSHEET_ID);
+      console.error(
+        "GOOGLE_SHEETS_SPREADSHEET_ID:",
+        !!GOOGLE_SHEETS_SPREADSHEET_ID
+      );
       console.error("GOOGLE_SHEETS_CREDENTIALS:", !!GOOGLE_SHEETS_CREDENTIALS);
       return false;
     }
@@ -636,10 +639,10 @@ async function saveToGoogleSheets(invoiceData) {
     // Create Google Sheets client
     const auth = new google.auth.GoogleAuth({
       credentials: credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
 
-    const sheets = google.sheets({ version: 'v4', auth });
+    const sheets = google.sheets({ version: "v4", auth });
 
     // Prepare the row data
     const rowData = [
@@ -661,9 +664,9 @@ async function saveToGoogleSheets(invoiceData) {
     // Append the data to the sheet
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: 'Invoices!A:K', // Assuming headers are in row 1
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
+      range: "Invoices!A:K", // Assuming headers are in row 1
+      valueInputOption: "RAW",
+      insertDataOption: "INSERT_ROWS",
       resource: {
         values: [rowData],
       },
@@ -672,7 +675,6 @@ async function saveToGoogleSheets(invoiceData) {
     console.log("✅ Successfully saved to Google Sheets");
     console.log("📊 Response:", response.data);
     return true;
-
   } catch (error) {
     console.error("❌ Error saving to Google Sheets:", error);
     console.error("❌ Error details:", error.message);
