@@ -110,36 +110,55 @@ async function processTextMessage(message) {
   const from = message.from;
   const text = message.text?.body?.toLowerCase().trim();
 
-  if (!text) return;
+  console.log(`🔍 Processing text message from ${from}: "${text}"`);
+
+  if (!text) {
+    console.log("❌ No text body found in message");
+    return;
+  }
 
   // Get or create user session
   let session = userSessions.get(from);
   if (!session) {
     session = { state: "initial", invoices: [] };
     userSessions.set(from, session);
+    console.log(`📝 Created new session for user ${from}`);
   }
 
-  console.log(`User ${from} in state: ${session.state}, message: "${text}"`);
+  console.log(`👤 User ${from} in state: ${session.state}, message: "${text}"`);
 
   // Process based on current state
-  switch (session.state) {
-    case "initial":
-      await handleInitialState(from, text, session);
-      break;
-    case "waiting_for_invoice":
-      await handleInvoiceSubmission(from, text, session);
-      break;
-    default:
-      await sendWhatsAppMessage(
-        from,
-        "Er is een fout opgetreden. Start opnieuw met een bericht."
-      );
-      session.state = "initial";
-      break;
+  try {
+    switch (session.state) {
+      case "initial":
+        console.log(`🔄 Handling initial state for user ${from}`);
+        await handleInitialState(from, text, session);
+        break;
+      case "waiting_for_invoice":
+        console.log(`📄 Handling invoice submission for user ${from}`);
+        await handleInvoiceSubmission(from, text, session);
+        break;
+      default:
+        console.log(`⚠️ Unknown state for user ${from}: ${session.state}`);
+        await sendWhatsAppMessage(
+          from,
+          "Er is een fout opgetreden. Start opnieuw met een bericht."
+        );
+        session.state = "initial";
+        break;
+    }
+  } catch (error) {
+    console.error(`❌ Error processing message for user ${from}:`, error);
+    await sendWhatsAppMessage(
+      from,
+      "Er is een fout opgetreden. Probeer het opnieuw."
+    );
   }
 }
 
 async function showMainMenu(from) {
+  console.log(`🎛️ showMainMenu called for user ${from}`);
+  
   const menuMessage = {
     messaging_product: "whatsapp",
     to: from,
@@ -181,10 +200,14 @@ async function showMainMenu(from) {
     },
   };
 
-  await sendWhatsAppInteractiveMessage(from, menuMessage);
+  console.log(`📤 Sending interactive menu to user ${from}`);
+  const result = await sendWhatsAppInteractiveMessage(from, menuMessage);
+  console.log(`📤 Interactive menu sent to user ${from}, result: ${result}`);
 }
 
 async function handleInitialState(from, text, session) {
+  console.log(`🎯 handleInitialState called for user ${from} with text: "${text}"`);
+  
   // Show choice menu for any message in initial state
   if (
     text.includes("1") ||
@@ -256,8 +279,11 @@ Neem contact op via: *JMSoft.com*`;
     await showMainMenu(from);
   } else {
     // Show main menu for any other message
+    console.log(`📋 Showing main menu for user ${from} (any other message)`);
     await showMainMenu(from);
   }
+  
+  console.log(`✅ handleInitialState completed for user ${from}`);
 }
 
 async function handleInvoiceSubmission(from, text, session) {
@@ -584,6 +610,9 @@ async function sendWhatsAppMessage(to, message) {
 }
 
 async function sendWhatsAppInteractiveMessage(to, message) {
+  console.log(`📤 sendWhatsAppInteractiveMessage called for user ${to}`);
+  console.log(`📤 Message data:`, JSON.stringify(message, null, 2));
+  
   try {
     const response = await axios.post(
       `${WHATSAPP_API_URL}/${PHONE_NUMBER_ID}/messages`,
