@@ -277,22 +277,20 @@ async function handleInvoiceSubmission(from, text, session) {
   ) {
     if (session.multipleMode && session.invoices.length > 0) {
       await sendMultipleInvoicesSummary(from, session);
-      session.state = "initial";
-      session.invoices = [];
+      // Menu is automatically shown in sendMultipleInvoicesSummary
     } else {
       await sendWhatsAppMessage(
         from,
         "Je hebt nog geen facturen ingestuurd. Stuur eerst een foto van een factuur/bonnetje."
       );
+      // Show menu after error message
+      await showMainMenu(from);
+      session.state = "initial";
     }
   } else {
-    const helpMessage = `📸 *Stuur een foto van je factuur/bonnetje*
-
-Of gebruik een van deze commando's:
-• *menu* - Terug naar hoofdmenu
-• *klaar* - Afronden (alleen bij meerdere facturen)`;
-
-    await sendWhatsAppMessage(from, helpMessage);
+    // For any other text, show menu to guide user
+    await showMainMenu(from);
+    session.state = "initial";
   }
 }
 
@@ -352,6 +350,7 @@ async function processImageMessage(message) {
       );
     } else {
       await sendSingleInvoiceSummary(from, invoiceData);
+      // Menu is automatically shown in sendSingleInvoiceSummary
       session.state = "initial";
       session.invoices = [];
     }
@@ -398,10 +397,12 @@ async function sendSingleInvoiceSummary(from, invoiceData) {
 
 📈 *Invoice #${Date.now()}*
 
-*Bedankt voor het gebruik van JMSoft AI Invoice Processor!*
-Stuur 'hallo' om opnieuw te beginnen.`;
+*Bedankt voor het gebruik van JMSoft AI Invoice Processor!*`;
 
   await sendWhatsAppMessage(from, responseMessage);
+  
+  // Automatically show menu after single invoice processing
+  await showMainMenu(from);
 }
 
 async function sendMultipleInvoicesSummary(from, session) {
@@ -430,10 +431,12 @@ async function sendMultipleInvoicesSummary(from, session) {
 
 📈 *Batch #${Date.now()}*
 
-*Bedankt voor het gebruik van JMSoft AI Invoice Processor!*
-Stuur 'hallo' om opnieuw te beginnen.`;
+*Bedankt voor het gebruik van JMSoft AI Invoice Processor!*`;
 
   await sendWhatsAppMessage(from, responseMessage);
+  
+  // Automatically show menu after multiple invoices processing
+  await showMainMenu(from);
 }
 
 // Simulated functions (replace with real implementations)
@@ -610,9 +613,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`WhatsApp Webhook server running on port ${PORT}`);
   console.log(`Webhook URL: https://your-app-name.onrender.com`);
-  console.log(`Verify Token: ${verifyToken ? 'Set' : 'Not set'}`);
-  console.log(`Phone Number ID: ${PHONE_NUMBER_ID ? 'Set' : 'Not set'}`);
-  console.log(`Access Token: ${ACCESS_TOKEN ? 'Set' : 'Not set'}`);
-  console.log(`OpenAI API Key: ${OPENAI_API_KEY ? 'Set' : 'Not set'}`);
-  console.log(`Google Sheets ID: ${GOOGLE_SHEETS_SPREADSHEET_ID ? 'Set' : 'Not set'}`);
+  console.log(`Verify Token: ${VERIFY_TOKEN}`);
 });
