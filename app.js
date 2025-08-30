@@ -243,7 +243,7 @@ Helaas zijn er nog niet meerdere AI Agents beschikbaar die je verder kunnen help
 Neem contact op via: *JMSoft.com*`;
 
     await sendWhatsAppMessage(from, infoMessage);
-    
+
     // Show menu again after info
     await showMainMenu(from);
     session.state = "initial";
@@ -400,7 +400,7 @@ async function sendSingleInvoiceSummary(from, invoiceData) {
 *Bedankt voor het gebruik van JMSoft AI Invoice Processor!*`;
 
   await sendWhatsAppMessage(from, responseMessage);
-  
+
   // Automatically show menu after single invoice processing
   await showMainMenu(from);
 }
@@ -434,7 +434,7 @@ async function sendMultipleInvoicesSummary(from, session) {
 *Bedankt voor het gebruik van JMSoft AI Invoice Processor!*`;
 
   await sendWhatsAppMessage(from, responseMessage);
-  
+
   // Automatically show menu after multiple invoices processing
   await showMainMenu(from);
 }
@@ -613,5 +613,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`WhatsApp Webhook server running on port ${PORT}`);
   console.log(`Webhook URL: https://your-app-name.onrender.com`);
-  console.log(`Verify Token: ${VERIFY_TOKEN}`);
+  console.log(`Verify Token: ${verifyToken}`);
 });
