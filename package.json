@@ -9,7 +9,8 @@
     "check-env": "node check_env.js",
     "test-whatsapp": "node test_whatsapp_api.js",
     "test-webhook": "node test_webhook_flow.js",
-    "validate-google": "node validate_google_credentials.js"
+    "validate-google": "node validate_google_credentials.js",
+    "setup-sheets": "node setup_sheets_manually.js"
   },
   "dependencies": {
     "express": "^4.18.2",

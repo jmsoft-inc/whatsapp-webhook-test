@@ -3,7 +3,7 @@
  * Specifically optimized for Albert Heijn and other Dutch supermarkets
  */
 
-const axios = require('axios');
+const axios = require("axios");
 
 // Generate unique invoice number
 function generateInvoiceNumber() {
@@ -15,10 +15,10 @@ function generateInvoiceNumber() {
 // Improved OCR text extraction with Albert Heijn specific patterns
 async function extractTextFromImage(imageUrl) {
   console.log(`🔍 Extracting text from image: ${imageUrl}`);
-  
+
   // In a real implementation, you would use a proper OCR service
   // For now, we'll simulate with improved patterns for Albert Heijn
-  
+
   // Simulated OCR result with better formatting
   const simulatedText = `ALBERT HEIJN
 BONNETJE
@@ -100,12 +100,12 @@ async function processWithAI(text, invoiceNumber) {
             - Zorg dat alle bedragen alleen getallen zijn (geen € of komma's)
             - Herken Albert Heijn specifieke patronen
             - Extraheer alle individuele items met hoeveelheden en prijzen
-            - Gebruik het meegegeven factuurnummer`
+            - Gebruik het meegegeven factuurnummer`,
           },
           {
             role: "user",
-            content: `Factuurnummer: ${invoiceNumber}\n\nBonnetje tekst:\n${text}`
-          }
+            content: `Factuurnummer: ${invoiceNumber}\n\nBonnetje tekst:\n${text}`,
+          },
         ],
         temperature: 0.1,
       },
@@ -136,7 +136,7 @@ async function processWithAI(text, invoiceNumber) {
 // Fallback response when AI is not available
 function createFallbackResponse(text, invoiceNumber) {
   // Basic parsing for common patterns
-  const lines = text.split('\n');
+  const lines = text.split("\n");
   let company = "ALBERT HEIJN";
   let date = new Date().toISOString().split("T")[0];
   let total = 0;
@@ -148,7 +148,7 @@ function createFallbackResponse(text, invoiceNumber) {
     if (line.includes("Totaal:")) {
       const match = line.match(/Totaal:\s*€?([0-9,]+)/);
       if (match) {
-        total = parseFloat(match[1].replace(',', '.'));
+        total = parseFloat(match[1].replace(",", "."));
       }
     }
     if (line.includes("Betaalmethode:")) {
@@ -182,16 +182,16 @@ function createFallbackResponse(text, invoiceNumber) {
         name: "Producten",
         quantity: "1",
         unit_price: total,
-        total_price: total
-      }
+        total_price: total,
+      },
     ],
     item_count: 1,
     confidence: 60,
     notes: "Handmatige verwerking - AI niet beschikbaar",
     store_info: {
       kassa: "3",
-      transactie: "123456789"
-    }
+      transactie: "123456789",
+    },
   };
 }
 
@@ -199,11 +199,14 @@ function createFallbackResponse(text, invoiceNumber) {
 async function saveDetailedInvoiceToSheets(invoiceData) {
   try {
     console.log("💾 Saving detailed invoice to Google Sheets...");
-    
+
     const { google } = require("googleapis");
-    
+
     // Check environment variables
-    if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID || !process.env.GOOGLE_SHEETS_CREDENTIALS) {
+    if (
+      !process.env.GOOGLE_SHEETS_SPREADSHEET_ID ||
+      !process.env.GOOGLE_SHEETS_CREDENTIALS
+    ) {
       console.error("❌ Missing Google Sheets environment variables");
       return false;
     }
@@ -253,7 +256,7 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
 
     // Save detailed items to Detail Invoices tab
     if (invoiceData.items && invoiceData.items.length > 0) {
-      const detailRows = invoiceData.items.map(item => [
+      const detailRows = invoiceData.items.map((item) => [
         new Date().toISOString(), // Timestamp
         invoiceData.invoice_number || "INV-UNKNOWN",
         invoiceData.company || "Onbekend",
@@ -291,81 +294,9 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
 // Create Google Sheets headers if they don't exist
 async function setupGoogleSheetsHeaders() {
   try {
-    const { google } = require("googleapis");
-    
-    if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID || !process.env.GOOGLE_SHEETS_CREDENTIALS) {
-      console.error("❌ Missing Google Sheets environment variables");
-      return false;
-    }
-
-    let credentials;
-    try {
-      credentials = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS);
-    } catch (error) {
-      console.error("❌ Error parsing Google Sheets credentials:", error);
-      return false;
-    }
-
-    const auth = new google.auth.GoogleAuth({
-      credentials: credentials,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-    });
-
-    const sheets = google.sheets({ version: "v4", auth });
-
-    // Setup Invoices tab headers
-    const invoicesHeaders = [
-      "Timestamp",
-      "Factuurnummer",
-      "Bedrijf",
-      "Datum",
-      "Tijd",
-      "Totaalbedrag",
-      "Valuta",
-      "Document Type",
-      "Aantal Items",
-      "Betaalmethode",
-      "Betrouwbaarheid",
-      "Opmerkingen"
-    ];
-
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Invoices!A1:L1",
-      valueInputOption: "RAW",
-      resource: {
-        values: [invoicesHeaders],
-      },
-    });
-
-    // Setup Detail Invoices tab headers
-    const detailHeaders = [
-      "Timestamp",
-      "Factuurnummer",
-      "Bedrijf",
-      "Datum",
-      "Productnaam",
-      "Hoeveelheid",
-      "Prijs per stuk",
-      "Totaalprijs",
-      "Valuta",
-      "Betaalmethode",
-      "Kassa",
-      "Transactie",
-      "Opmerkingen"
-    ];
-
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Detail Invoices!A1:M1",
-      valueInputOption: "RAW",
-      resource: {
-        values: [detailHeaders],
-      },
-    });
-
-    console.log("✅ Google Sheets headers setup completed");
-    return true;
+    // Use the new setup function
+    const { setupGoogleSheetsTabs } = require("./setup_google_sheets_tabs");
+    return await setupGoogleSheetsTabs();
   } catch (error) {
     console.error("❌ Error setting up Google Sheets headers:", error);
     return false;
@@ -377,5 +308,5 @@ module.exports = {
   extractTextFromImage,
   processWithAI,
   saveDetailedInvoiceToSheets,
-  setupGoogleSheetsHeaders
+  setupGoogleSheetsHeaders,
 };

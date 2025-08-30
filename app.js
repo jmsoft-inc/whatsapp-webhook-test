@@ -9,7 +9,7 @@ const {
   extractTextFromImage,
   processWithAI,
   saveDetailedInvoiceToSheets,
-  setupGoogleSheetsHeaders
+  setupGoogleSheetsHeaders,
 } = require("./improved_invoice_processing");
 
 // Create an Express app
@@ -527,10 +527,6 @@ async function getMediaUrl(mediaId) {
   return `https://example.com/media/${mediaId}`;
 }
 
-
-
-
-
 async function saveToGoogleSheets(invoiceData) {
   try {
     console.log("🔄 Starting Google Sheets save...");
@@ -667,7 +663,7 @@ app.listen(PORT, async () => {
   console.log(`WhatsApp Webhook server running on port ${PORT}`);
   console.log(`Webhook URL: https://your-app-name.onrender.com`);
   console.log(`Verify Token: ${verifyToken}`);
-  
+
   // Setup Google Sheets headers on startup
   try {
     console.log("🔧 Setting up Google Sheets headers...");
