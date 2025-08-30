@@ -267,6 +267,25 @@ async function extractTextFromImage(imageUrl) {
 
 async function processWithAI(text) {
   try {
+    // Check if OpenAI API key is available
+    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'your-openai-api-key' || OPENAI_API_KEY === 'YOUR_OPENAI_API_KEY_HERE') {
+      console.log("⚠️ OpenAI API key not configured, using fallback response");
+      
+      // Fallback response without AI processing
+      return {
+        company: "Onbekend Bedrijf",
+        date: new Date().toISOString().split('T')[0],
+        total_amount: 0.00,
+        currency: "EUR",
+        document_type: "receipt",
+        item_count: 1,
+        tax_amount: 0.00,
+        payment_method: "unknown",
+        confidence: 50,
+        notes: "AI processing niet beschikbaar - handmatige verwerking vereist"
+      };
+    }
+
     const prompt = `
     Je bent een expert in het verwerken van Nederlandse bonnetjes en facturen. 
     Extraheer gestructureerde data uit deze tekst en retourneer een JSON object.
@@ -322,7 +341,20 @@ async function processWithAI(text) {
     return JSON.parse(result);
   } catch (error) {
     console.error("Error processing with AI:", error);
-    return null;
+    
+    // Fallback response on error
+    return {
+      company: "Error bij verwerking",
+      date: new Date().toISOString().split('T')[0],
+      total_amount: 0.00,
+      currency: "EUR",
+      document_type: "receipt",
+      item_count: 1,
+      tax_amount: 0.00,
+      payment_method: "unknown",
+      confidence: 0,
+      notes: `AI processing error: ${error.message}`
+    };
   }
 }
 
