@@ -35,40 +35,68 @@ app.get("/", (req, res) => {
 
 // Route for POST requests (webhook events)
 app.post("/", async (req, res) => {
-  console.log("Received webhook event:", JSON.stringify(req.body, null, 2));
+  console.log("📥 POST request received");
+  console.log("📋 Request body object:", req.body.object);
+  console.log("📋 Request body mode:", req.body.mode);
+  console.log("📋 Request body hub.challenge:", req.body["hub.challenge"]);
+  console.log("📋 Full request body:", JSON.stringify(req.body, null, 2));
 
   // Handle webhook verification
   if (req.body.mode === "subscribe" && req.body["hub.challenge"]) {
-    console.log("WEBHOOK VERIFIED");
+    console.log("✅ WEBHOOK VERIFIED");
     res.status(200).send(req.body["hub.challenge"]);
     return;
   }
 
   // Handle webhook events
   if (req.body.object === "whatsapp_business_account") {
+    console.log("✅ Processing whatsapp_business_account event");
     try {
       await processWebhookEvent(req.body);
+      console.log("✅ processWebhookEvent completed successfully");
       res.status(200).send("OK");
     } catch (error) {
-      console.error("Error processing webhook event:", error);
+      console.error("❌ Error processing webhook event:", error);
       res.status(500).send("Error");
     }
   } else {
+    console.log("❌ Object is not whatsapp_business_account:", req.body.object);
     res.status(404).send("Not found");
   }
 });
 
 async function processWebhookEvent(body) {
+  console.log("🔄 processWebhookEvent called");
+  
   const entry = body.entry?.[0];
-  if (!entry) return;
+  if (!entry) {
+    console.log("❌ No entry found in webhook body");
+    return;
+  }
+  console.log("✅ Entry found:", entry.id);
 
   const changes = entry.changes?.[0];
-  if (!changes || changes.value?.object !== "whatsapp_business_account") return;
+  if (!changes) {
+    console.log("❌ No changes found in entry");
+    return;
+  }
+  console.log("✅ Changes found");
+
+  if (changes.value?.object !== "whatsapp_business_account") {
+    console.log("❌ Object is not whatsapp_business_account:", changes.value?.object);
+    return;
+  }
+  console.log("✅ Object is whatsapp_business_account");
 
   const messages = changes.value.messages;
-  if (!messages) return;
+  if (!messages) {
+    console.log("❌ No messages found in changes");
+    return;
+  }
+  console.log("✅ Messages found:", messages.length);
 
   for (const message of messages) {
+    console.log("📨 Processing message:", message.type);
     await processMessage(message);
   }
 }
@@ -158,7 +186,7 @@ async function processTextMessage(message) {
 
 async function showMainMenu(from) {
   console.log(`🎛️ showMainMenu called for user ${from}`);
-  
+
   const menuMessage = {
     messaging_product: "whatsapp",
     to: from,
@@ -206,8 +234,10 @@ async function showMainMenu(from) {
 }
 
 async function handleInitialState(from, text, session) {
-  console.log(`🎯 handleInitialState called for user ${from} with text: "${text}"`);
-  
+  console.log(
+    `🎯 handleInitialState called for user ${from} with text: "${text}"`
+  );
+
   // Show choice menu for any message in initial state
   if (
     text.includes("1") ||
@@ -282,7 +312,7 @@ Neem contact op via: *JMSoft.com*`;
     console.log(`📋 Showing main menu for user ${from} (any other message)`);
     await showMainMenu(from);
   }
-  
+
   console.log(`✅ handleInitialState completed for user ${from}`);
 }
 
@@ -612,7 +642,7 @@ async function sendWhatsAppMessage(to, message) {
 async function sendWhatsAppInteractiveMessage(to, message) {
   console.log(`📤 sendWhatsAppInteractiveMessage called for user ${to}`);
   console.log(`📤 Message data:`, JSON.stringify(message, null, 2));
-  
+
   try {
     const response = await axios.post(
       `${WHATSAPP_API_URL}/${PHONE_NUMBER_ID}/messages`,
