@@ -217,72 +217,87 @@ async function processWithAI(text, invoiceNumber) {
 // Enhanced fallback response with comprehensive data extraction for Dutch receipts
 function createFallbackResponse(text, invoiceNumber) {
   console.log(`📝 Creating enhanced fallback response for invoice: ${invoiceNumber}`);
+  console.log(`📄 Input text length: ${text.length} characters`);
 
-  // Simplified extraction with reliable patterns
+  // Extract date and time with multiple patterns
   let date = "NB";
   let time = "NB";
 
-  // Extract date and time with simple patterns
-  const dateMatch = text.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-  if (dateMatch) {
-    const day = dateMatch[1];
-    const month = dateMatch[2];
-    const year = dateMatch[3];
-    date = `${year}-${month}-${day}`;
+  // Try multiple date patterns
+  const datePatterns = [
+    /(\d{2})\/(\d{2})\/(\d{4})/, // 22/08/2025
+    /(\d{2})-(\d{2})-(\d{4})/, // 22-08-2025
+    /(\d{2})-(\d{1})-(\d{4})/, // 22-8-2025
+  ];
+
+  for (const pattern of datePatterns) {
+    const dateMatch = text.match(pattern);
+    if (dateMatch) {
+      const day = dateMatch[1].padStart(2, "0");
+      const month = dateMatch[2].padStart(2, "0");
+      const year = dateMatch[3];
+      date = `${year}-${month}-${day}`;
+      console.log(`📅 Date extracted: ${date}`);
+      break;
+    }
   }
 
-  const timeMatch = text.match(/(\d{1,2}):(\d{2})/);
-  if (timeMatch) {
-    const hour = timeMatch[1].padStart(2, "0");
-    const minute = timeMatch[2];
-    time = `${hour}:${minute}`;
+  // Try multiple time patterns
+  const timePatterns = [
+    /(\d{1,2}):(\d{2})/, // 12:55
+    /(\d{1,2}):(\d{2})\s*(\d{2})\/(\d{2})\/(\d{4})/, // 12:55 22/08/2025
+  ];
+
+  for (const pattern of timePatterns) {
+    const timeMatch = text.match(pattern);
+    if (timeMatch) {
+      time = `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}`;
+      console.log(`🕐 Time extracted: ${time}`);
+      break;
+    }
   }
 
-  // Extract subtotals with simple patterns
+  // Extract subtotals with improved logic
   let subtotalAfterDiscount = 0;
   let subtotalBeforeDiscount = 0;
 
-  // Find all SUBTOTAAL matches
-  const subtotalMatches = text.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/gi);
-  if (subtotalMatches && subtotalMatches.length >= 2) {
-    // First SUBTOTAAL = before discount, second = after discount
-    const firstMatch = text.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/i);
-    const secondMatch = text.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/gi);
-    if (firstMatch) {
-      subtotalBeforeDiscount = parseFloat(firstMatch[1].replace(",", "."));
-    }
-    if (secondMatch && secondMatch.length >= 2) {
-      // Find the second occurrence
-      const lines = text.split('\n');
-      let count = 0;
-      for (const line of lines) {
-        if (line.includes('SUBTOTAAL:')) {
-          count++;
-          if (count === 2) {
-            const match = line.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/i);
-            if (match) {
-              subtotalAfterDiscount = parseFloat(match[1].replace(",", "."));
-              break;
-            }
-          }
+  // Find all SUBTOTAAL occurrences
+  const lines = text.split('\n');
+  let subtotalCount = 0;
+  let firstSubtotal = 0;
+  let secondSubtotal = 0;
+
+  for (const line of lines) {
+    if (line.includes('SUBTOTAAL:')) {
+      subtotalCount++;
+      const match = line.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/i);
+      if (match) {
+        const amount = parseFloat(match[1].replace(",", "."));
+        if (subtotalCount === 1) {
+          firstSubtotal = amount;
+        } else if (subtotalCount === 2) {
+          secondSubtotal = amount;
         }
-      }
-    }
-  } else if (subtotalMatches && subtotalMatches.length === 1) {
-    // Only one SUBTOTAAL found
-    const match = text.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/i);
-    if (match) {
-      subtotalBeforeDiscount = parseFloat(match[1].replace(",", "."));
-      // Calculate after discount using UW VOORDEEL
-      const voordeelMatch = text.match(/UW VOORDEEL:\s*(\d+[.,]\d{2})/i);
-      if (voordeelMatch) {
-        const voordeel = parseFloat(voordeelMatch[1].replace(",", "."));
-        subtotalAfterDiscount = subtotalBeforeDiscount - voordeel;
       }
     }
   }
 
-  // Extract BTW breakdown
+  if (subtotalCount >= 2) {
+    subtotalBeforeDiscount = firstSubtotal;
+    subtotalAfterDiscount = secondSubtotal;
+  } else if (subtotalCount === 1) {
+    subtotalBeforeDiscount = firstSubtotal;
+    // Calculate after discount using UW VOORDEEL
+    const voordeelMatch = text.match(/UW VOORDEEL:\s*(\d+[.,]\d{2})/i);
+    if (voordeelMatch) {
+      const voordeel = parseFloat(voordeelMatch[1].replace(",", "."));
+      subtotalAfterDiscount = subtotalBeforeDiscount - voordeel;
+    }
+  }
+
+  console.log(`💰 Subtotals: Before=${subtotalBeforeDiscount}, After=${subtotalAfterDiscount}`);
+
+  // Extract BTW breakdown with improved patterns
   let btw9 = 0;
   let btw21 = 0;
   let btw9Base = 0;
@@ -292,34 +307,29 @@ function createFallbackResponse(text, invoiceNumber) {
   if (btw9Match) {
     btw9Base = parseFloat(btw9Match[1].replace(",", "."));
     btw9 = parseFloat(btw9Match[2].replace(",", "."));
+    console.log(`📊 BTW 9%: Base=${btw9Base}, Amount=${btw9}`);
   }
 
   const btw21Match = text.match(/21%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i);
   if (btw21Match) {
     btw21Base = parseFloat(btw21Match[1].replace(",", "."));
     btw21 = parseFloat(btw21Match[2].replace(",", "."));
+    console.log(`📊 BTW 21%: Base=${btw21Base}, Amount=${btw21}`);
   }
 
-  // Extract bonus amounts
+  // Extract bonus amounts with improved patterns
   let bonusTotal = 0;
-  const bonusMatches = text.match(/BONUS[^:]*:\s*-(\d+[.,]\d{2})/gi);
-  if (bonusMatches) {
-    for (const match of bonusMatches) {
-      const amountMatch = match.match(/-(\d+[.,]\d{2})/);
-      if (amountMatch) {
-        bonusTotal += parseFloat(amountMatch[1].replace(",", "."));
-      }
-    }
-  }
+  const bonusPatterns = [
+    /BONUS[^:]*:\s*-(\d+[.,]\d{2})/gi,
+    /\d+%\s+K[^:]*:\s*-(\d+[.,]\d{2})/gi,
+  ];
 
-  // Extract percentage discounts
-  const percentageMatches = text.match(/\d+%\s+K[^:]*:\s*-(\d+[.,]\d{2})/gi);
-  if (percentageMatches) {
-    for (const match of percentageMatches) {
-      const amountMatch = match.match(/-(\d+[.,]\d{2})/);
-      if (amountMatch) {
-        bonusTotal += parseFloat(amountMatch[1].replace(",", "."));
-      }
+  for (const pattern of bonusPatterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const amount = parseFloat(match[1].replace(",", "."));
+      bonusTotal += amount;
+      console.log(`🎁 Bonus found: ${amount}`);
     }
   }
 
@@ -328,9 +338,10 @@ function createFallbackResponse(text, invoiceNumber) {
   const voordeelMatch = text.match(/UW VOORDEEL:\s*(\d+[.,]\d{2})/i);
   if (voordeelMatch) {
     voordeelTotal = parseFloat(voordeelMatch[1].replace(",", "."));
+    console.log(`💎 Voordeel: ${voordeelTotal}`);
   }
 
-  // Extract koopzegels
+  // Extract koopzegels with improved pattern
   let koopzegelsAmount = 0;
   let koopzegelsCount = 0;
 
@@ -338,13 +349,23 @@ function createFallbackResponse(text, invoiceNumber) {
   if (koopzegelsMatch) {
     koopzegelsCount = parseInt(koopzegelsMatch[1]);
     koopzegelsAmount = parseFloat(koopzegelsMatch[2].replace(",", "."));
+    console.log(`🎫 Koopzegels: Count=${koopzegelsCount}, Amount=${koopzegelsAmount}`);
   }
 
-  // Extract total amount
+  // Extract total amount with improved logic
   let totalAmount = 0;
-  const totalMatch = text.match(/TOTAAL:\s*(\d+[.,]\d{2})/i);
-  if (totalMatch) {
-    totalAmount = parseFloat(totalMatch[1].replace(",", "."));
+  
+  // Find the last TOTAAL that's not in the BTW section
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (line.includes('TOTAAL:') && !line.includes('BTW OVER EUR')) {
+      const match = line.match(/TOTAAL:\s*(\d+[.,]\d{2})/i);
+      if (match && !line.match(/TOTAAL:\s*(\d+[.,]\d{2})\s+(\d+[.,]\d{2})/)) {
+        totalAmount = parseFloat(match[1].replace(",", "."));
+        console.log(`💵 Total amount: ${totalAmount}`);
+        break;
+      }
+    }
   }
 
   // Extract PIN payment
@@ -352,9 +373,10 @@ function createFallbackResponse(text, invoiceNumber) {
   const pinMatch = text.match(/PINNEN:\s*(\d+[.,]\d{2})/i);
   if (pinMatch) {
     pinAmount = parseFloat(pinMatch[1].replace(",", "."));
+    console.log(`💳 PIN amount: ${pinAmount}`);
   }
 
-  // Extract store information
+  // Extract store information with improved patterns
   let filiaal = "NB";
   let adres = "NB";
   let telefoon = "NB";
@@ -365,40 +387,75 @@ function createFallbackResponse(text, invoiceNumber) {
   let airMiles = "NB";
 
   const filiaalMatch = text.match(/FILIAAL\s*(\d+)/i);
-  if (filiaalMatch) filiaal = filiaalMatch[1];
+  if (filiaalMatch) {
+    filiaal = filiaalMatch[1];
+    console.log(`🏪 Filiaal: ${filiaal}`);
+  }
 
   const adresMatch = text.match(/FILIAAL\s*\d+\s*([^\n]+)/i);
-  if (adresMatch) adres = adresMatch[1].trim();
+  if (adresMatch) {
+    adres = adresMatch[1].trim();
+    console.log(`📍 Adres: ${adres}`);
+  }
 
   const telefoonMatch = text.match(/(\d{3}-\d{7})/);
-  if (telefoonMatch) telefoon = telefoonMatch[1];
+  if (telefoonMatch) {
+    telefoon = telefoonMatch[1];
+    console.log(`📞 Telefoon: ${telefoon}`);
+  }
 
   const transactieMatch = text.match(/Transactie:\s*(\d+)/i);
-  if (transactieMatch) transactie = transactieMatch[1];
+  if (transactieMatch) {
+    transactie = transactieMatch[1];
+    console.log(`🔄 Transactie: ${transactie}`);
+  }
 
   const terminalMatch = text.match(/Terminal:\s*(\w+)/i);
-  if (terminalMatch) terminal = terminalMatch[1];
+  if (terminalMatch) {
+    terminal = terminalMatch[1];
+    console.log(`💻 Terminal: ${terminal}`);
+  }
 
   const merchantMatch = text.match(/Merchant:\s*(\d+)/i);
-  if (merchantMatch) merchant = merchantMatch[1];
+  if (merchantMatch) {
+    merchant = merchantMatch[1];
+    console.log(`🏢 Merchant: ${merchant}`);
+  }
 
   const bonuskaartMatch = text.match(/BONUSKAART:\s*(\w+)/i);
-  if (bonuskaartMatch) bonuskaart = bonuskaartMatch[1];
+  if (bonuskaartMatch) {
+    bonuskaart = bonuskaartMatch[1];
+    console.log(`🎯 Bonuskaart: ${bonuskaart}`);
+  }
 
   const airMilesMatch = text.match(/AIRMILES[^:]*:\s*(\w+)/i);
-  if (airMilesMatch) airMiles = airMilesMatch[1];
+  if (airMilesMatch) {
+    airMiles = airMilesMatch[1];
+    console.log(`✈️ Air Miles: ${airMiles}`);
+  }
 
-  // Extract items with simple patterns
+  // Extract items with improved patterns
   const items = [];
-  const lines = text.split('\n');
   let itemCount = 0;
 
+  // First, try to get item count from SUBTOTAAL line
+  const itemCountMatch = text.match(/(\d+)\s*SUBTOTAAL:/i);
+  if (itemCountMatch) {
+    itemCount = parseInt(itemCountMatch[1]);
+    console.log(`📦 Item count from SUBTOTAAL: ${itemCount}`);
+  }
+
+  // Extract individual items
   for (const line of lines) {
-    // Skip lines that are not items
+    // Skip non-item lines
     if (line.includes('BONUSKAART') || line.includes('AIRMILES') || 
         line.includes('SUBTOTAAL') || line.includes('TOTAAL') || 
         line.includes('BONUS') || line.includes('UW VOORDEEL') || 
-        line.includes('KOOPZEGELS') || line.includes('BETAALD MET')) {
+        line.includes('KOOPZEGELS') || line.includes('BETAALD MET') ||
+        line.includes('BTW OVER EUR') || line.includes('POI:') ||
+        line.includes('Terminal:') || line.includes('Merchant:') ||
+        line.includes('Transactie:') || line.includes('Autorisatiecode:') ||
+        line.includes('Leesmethode:') || line.includes('Vragen over')) {
       continue;
     }
 
@@ -420,20 +477,18 @@ function createFallbackResponse(text, invoiceNumber) {
           bonus: line.includes(" B") ? "ja" : "nee",
           bonus_amount: 0,
         });
-        itemCount++;
+        console.log(`🛒 Item: ${quantity}x ${name} - €${price}`);
       }
     }
   }
 
-  // Extract item count from SUBTOTAAL line
-  const itemCountMatch = text.match(/(\d+)\s*SUBTOTAAL:/i);
-  if (itemCountMatch) {
-    itemCount = parseInt(itemCountMatch[1]);
-  } else if (items.length > 0) {
+  // If no item count from SUBTOTAAL, use items length
+  if (itemCount === 0 && items.length > 0) {
     itemCount = items.length;
+    console.log(`📦 Item count from items array: ${itemCount}`);
   }
 
-  // Calculate confidence
+  // Calculate confidence score
   let confidence = 70;
   if (date !== "NB") confidence += 5;
   if (time !== "NB") confidence += 5;
@@ -453,6 +508,8 @@ function createFallbackResponse(text, invoiceNumber) {
   if (merchant !== "NB") confidence += 5;
   if (bonuskaart !== "NB") confidence += 5;
   if (airMiles !== "NB") confidence += 5;
+
+  console.log(`🎯 Confidence score: ${confidence}`);
 
   return {
     invoice_number: invoiceNumber,
@@ -492,7 +549,7 @@ function createFallbackResponse(text, invoiceNumber) {
     items: items,
     item_count: itemCount,
     confidence: Math.min(confidence, 100),
-    notes: "Simplified fallback response - AI niet beschikbaar",
+    notes: "Enhanced fallback response with improved patterns - AI niet beschikbaar",
     btw_breakdown: {
       btw_9_base: btw9Base,
       btw_21_base: btw21Base,
