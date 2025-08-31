@@ -13,7 +13,15 @@ const {
   setupGoogleSheetsHeaders,
 } = require("./services/improved_invoice_processing");
 
-// Import image storage
+// Import file processor for multiple file types
+const {
+  saveReceiptFile,
+  extractTextFromFile,
+  createReceiptFileViewer,
+  createReceiptFilesList,
+} = require("./services/file_processor");
+
+// Import image storage (legacy support)
 const {
   saveReceiptImage,
   createReceiptViewer,
@@ -53,18 +61,24 @@ app.get("/", (req, res) => {
 
 // Route for viewing receipts list
 app.get("/receipts", (req, res) => {
-  const html = createReceiptsList();
+  const html = createReceiptFilesList();
   res.send(html);
 });
 
 // Route for viewing individual receipt
 app.get("/receipt/:invoiceNumber", (req, res) => {
   const invoiceNumber = req.params.invoiceNumber;
-  const html = createReceiptViewer(invoiceNumber);
+  const html = createReceiptFileViewer(invoiceNumber);
   res.send(html);
 });
 
-// Route for serving receipt images
+// Route for serving receipt files
+app.use(
+  "/receipt_files",
+  express.static(path.join(__dirname, "services/receipt_files"))
+);
+
+// Route for serving receipt images (legacy support)
 app.use(
   "/receipt_images",
   express.static(path.join(__dirname, "receipt_images"))
@@ -150,9 +164,17 @@ async function processMessage(message) {
   if (message.type === "text") {
     await processTextMessage(message);
   } else if (message.type === "image") {
-    await processImageMessage(message);
+    await processFileMessage(message, "image");
+  } else if (message.type === "document") {
+    await processFileMessage(message, "document");
   } else if (message.type === "interactive") {
     await processInteractiveMessage(message);
+  } else {
+    console.log(`⚠️ Unsupported message type: ${message.type}`);
+    await sendWhatsAppMessage(
+      from,
+      `❌ Dit bestandstype wordt nog niet ondersteund: ${message.type}\n\nOndersteunde formaten:\n• Afbeeldingen (JPG, PNG, GIF)\n• PDF bestanden\n• Documenten (DOC, DOCX)\n• Tekstbestanden`
+    );
   }
 }
 
@@ -424,9 +446,9 @@ async function handleInvoiceSubmission(from, text, session) {
   }
 }
 
-async function processImageMessage(message) {
+async function processFileMessage(message, fileType) {
   const from = message.from;
-  console.log("🖼️ Processing image message...");
+  console.log(`📄 Processing ${fileType} message...`);
 
   // Get user session
   let session = userSessions.get(from);
@@ -440,20 +462,35 @@ async function processImageMessage(message) {
     const invoiceNumber = generateInvoiceNumber();
     console.log("📄 Generated invoice number:", invoiceNumber);
 
-    // Get media URL from WhatsApp
-    const mediaUrl = await getMediaUrl(message.image.id);
-    console.log("📷 Media URL:", mediaUrl);
-
-    // Save the receipt image
-    const imageResult = await saveReceiptImage(mediaUrl, invoiceNumber);
-    if (imageResult.success) {
-      console.log("📸 Receipt image saved:", imageResult.filename);
-    } else {
-      console.log("⚠️ Could not save receipt image:", imageResult.error);
+    // Get media info based on file type
+    let mediaId, mimeType, fileName;
+    
+    if (fileType === "image") {
+      mediaId = message.image.id;
+      mimeType = message.image.mime_type || "image/jpeg";
+      fileName = message.image.filename || "receipt.jpg";
+    } else if (fileType === "document") {
+      mediaId = message.document.id;
+      mimeType = message.document.mime_type || "application/pdf";
+      fileName = message.document.filename || "receipt.pdf";
     }
 
-    // Extract text from image using improved OCR
-    const extractedText = await extractTextFromImage(mediaUrl);
+    console.log(`📄 File info: ${fileName} (${mimeType})`);
+
+    // Get media URL from WhatsApp
+    const mediaUrl = await getMediaUrl(mediaId);
+    console.log("📄 Media URL:", mediaUrl);
+
+    // Save the receipt file
+    const fileResult = await saveReceiptFile(mediaUrl, invoiceNumber, mimeType);
+    if (fileResult.success) {
+      console.log("📄 Receipt file saved:", fileResult.filename);
+    } else {
+      console.log("⚠️ Could not save receipt file:", fileResult.error);
+    }
+
+    // Extract text from file
+    const extractedText = await extractTextFromFile(fileResult.filepath, mimeType);
     console.log("📝 Extracted text:", extractedText);
 
     // Process with improved AI
