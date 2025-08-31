@@ -19,7 +19,7 @@ async function extractTextFromImage(imageUrl) {
   // In a real implementation, you would use a proper OCR service
   // For now, we'll simulate with improved patterns for Albert Heijn
 
-  // Simulated OCR result with better formatting
+  // Simulated OCR result with better formatting and all Dutch receipt elements
   const simulatedText = `ALBERT HEIJN
 BONNETJE
 Datum: 15-01-2024
@@ -32,15 +32,23 @@ KAAS JONG BELEGEN     1x €3,20     €3,20
 BOTER ROOMBOTER 250G  1x €2,10     €2,10
 APPELS ELSTAR 1KG     1x €2,50     €2,50
 BANANEN 1KG           1x €1,80     €1,80
+YOGHURT NATUUR 500G   1x €1,20     €1,20
+BROOD BELEG 400G      1x €2,40     €2,40
 
-Subtotaal:            €13,90
-BTW 9%:               €1,25
-BTW 21%:              €1,66
-Totaal:               €16,81
+Subtotaal:            €19,50
+Bonus:                 €2,60
+Subtotaal na bonus:   €16,90
+BTW 9%:               €1,52
+BTW 21%:              €0,00
+Emballage:            €0,50
+Koopzegels:           €0,20
+Totaal:               €19,12
 
 Betaalmethode: PIN
 Kaartnummer: ****1234
 Transactie: 123456789
+Terminal: T001
+Merchant: M12345
 
 Bedankt voor je aankoop!
 www.albertheijn.nl`;
