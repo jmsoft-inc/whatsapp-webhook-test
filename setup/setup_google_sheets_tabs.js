@@ -142,7 +142,7 @@ async function setupGoogleSheetsTabs() {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Invoices!A1:AG1",
+      range: "Invoices!A1:AH1",
       valueInputOption: "RAW",
       resource: {
         values: [invoicesHeaders],
@@ -194,7 +194,7 @@ async function setupGoogleSheetsTabs() {
             startRowIndex: 0,
             endRowIndex: 1,
             startColumnIndex: 0,
-            endColumnIndex: 33,
+            endColumnIndex: 34,
           },
           cell: {
             userEnteredFormat: {

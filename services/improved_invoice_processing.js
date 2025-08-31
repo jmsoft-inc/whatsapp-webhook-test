@@ -484,7 +484,7 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Invoices!A:AG",
+      range: "Invoices!A:AH",
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       resource: {
@@ -552,7 +552,9 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
 async function setupGoogleSheetsHeaders() {
   try {
     // Use the new setup function
-    const { setupGoogleSheetsTabs } = require("../setup/setup_google_sheets_tabs");
+    const {
+      setupGoogleSheetsTabs,
+    } = require("../setup/setup_google_sheets_tabs");
     return await setupGoogleSheetsTabs();
   } catch (error) {
     console.error("❌ Error setting up Google Sheets headers:", error);
