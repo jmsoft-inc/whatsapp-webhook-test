@@ -828,6 +828,275 @@ async function sendWhatsAppInteractiveMessage(to, message) {
   }
 }
 
+// Test endpoint for debugging
+app.get('/test', async (req, res) => {
+  console.log('🧪 Test endpoint called');
+  
+  try {
+    // Test the createFallbackResponse function
+    const { createFallbackResponse } = require('./services/improved_invoice_processing.js');
+    
+    const testText = `ALBERT HEIJN
+FILIAAL 1427
+Parijsplein 19
+070-3935033
+
+22/08/2025 12:55
+
+AANTAL OMSCHRIJVING PRIJS BEDRAG
+BONUSKAART: xx0802
+AIRMILES NR.: xx6254
+1 BOODSCH TAS: 1,59
+1 DZH HV MELK: 1,99
+1 DZH YOGHURT: 2,29
+1 HONING: 2,25
+3 BAPAO: 0,99
+1 DZH CREME FR: 1,09
+1 ZAANSE HOEVE: 2,69 25%
+1 BOTERH WORST: 1,49
+1 SCHOUDERHAM: 1,79
+1 AH ROOMBRIE: 2,99
+1 CHERRYTOMAAT: 1,19
+1 AH SALADE: 3,29 B
+1 AH SALADE: 2,79 B
+1 VRUCHT HAGEL: 2,59
+1 ROZ KREN BOL: 2,69
+2 VOLK BOLLEN: 1,59
+1 DE ICE CARAM: 1,59
+1 APPELFLAP: 1,78 B
+
+21 SUBTOTAAL: 40,24
+
+BONUS AHROOMBOTERA: -0,79
+BONUS AHSALADES175: -2,33
+25% K ZAANSE HOEVE: -0,67
+
+UW VOORDEEL: 3,79
+waarvan BONUS BOX PREMIUM: 0,00
+
+SUBTOTAAL: 36,45
+
+74 KOOPZEGELS PREMIUM: 7,40
+
+TOTAAL: 43,85
+
+6 eSPAARZEGELS PREMIUM
+28 MIJN AH MILES PREMIUM
+
+BETAALD MET:
+PINNEN: 43,85
+
+Totaal betaald: 43,85 EUR
+
+POI: 50282895
+Terminal: 5F2GVM
+Merchant: 1315641
+Periode: 5234
+Transactie: 02286653
+Maestro: A0000000043060
+Bank: ABN AMRO BANK
+Kaart: 673400xxxxxxxxx2056
+Kaartserienummer: 5
+Autorisatiecode: F30005
+Leesmethode: CHIP
+
+BTW OVER EUR
+9%: 31,98 2,88
+21%: 1,31 0,28
+TOTAAL: 33,29 3,16
+
+1427 12:54
+35 41
+22-8-2025
+
+Vragen over je kassabon? Onze collega's helpen je graag`;
+
+    console.log('📝 Testing createFallbackResponse function...');
+    const result = createFallbackResponse(testText, 'TEST001');
+    
+    // Define expected values
+    const expected = {
+      date: "2025-08-22",
+      time: "12:55",
+      subtotal_before_discount: 40.24,
+      subtotal: 36.45,
+      tax_9: 2.88,
+      tax_21: 0.28,
+      btw_9_base: 31.98,
+      btw_21_base: 1.31,
+      bonus_amount: 3.79,
+      voordeel_amount: 3.79,
+      koopzegels_amount: 7.4,
+      koopzegels_count: 74,
+      total_amount: 43.85,
+      payment_pin: 43.85,
+      item_count: 21,
+      transactie: "02286653",
+      terminal: "5F2GVM",
+      merchant: "1315641",
+      bonuskaart: "xx0802",
+      air_miles: "xx6254"
+    };
+
+    // Test each field
+    const tests = [
+      { field: "date", expected: expected.date, actual: result.date },
+      { field: "time", expected: expected.time, actual: result.time },
+      { field: "subtotal_before_discount", expected: expected.subtotal_before_discount, actual: result.subtotal_before_discount },
+      { field: "subtotal", expected: expected.subtotal, actual: result.subtotal },
+      { field: "tax_9", expected: expected.tax_9, actual: result.tax_9 },
+      { field: "tax_21", expected: expected.tax_21, actual: result.tax_21 },
+      { field: "btw_9_base", expected: expected.btw_9_base, actual: result.btw_breakdown.btw_9_base },
+      { field: "btw_21_base", expected: expected.btw_21_base, actual: result.btw_breakdown.btw_21_base },
+      { field: "bonus_amount", expected: expected.bonus_amount, actual: result.bonus_amount },
+      { field: "voordeel_amount", expected: expected.voordeel_amount, actual: result.voordeel_amount },
+      { field: "koopzegels_amount", expected: expected.koopzegels_amount, actual: result.koopzegels_amount },
+      { field: "koopzegels_count", expected: expected.koopzegels_count, actual: result.koopzegels_count },
+      { field: "total_amount", expected: expected.total_amount, actual: result.total_amount },
+      { field: "payment_pin", expected: expected.payment_pin, actual: result.payment_pin },
+      { field: "item_count", expected: expected.item_count, actual: result.item_count },
+      { field: "transactie", expected: expected.transactie, actual: result.store_info.transactie },
+      { field: "terminal", expected: expected.terminal, actual: result.store_info.terminal },
+      { field: "merchant", expected: expected.merchant, actual: result.store_info.merchant },
+      { field: "bonuskaart", expected: expected.bonuskaart, actual: result.loyalty.bonuskaart },
+      { field: "air_miles", expected: expected.air_miles, actual: result.loyalty.air_miles }
+    ];
+
+    let passedTests = 0;
+    let totalTests = tests.length;
+    const testResults = [];
+
+    for (const test of tests) {
+      const isMatch = test.actual === test.expected;
+      const status = isMatch ? "✅" : "❌";
+      testResults.push({
+        field: test.field,
+        expected: test.expected,
+        actual: test.actual,
+        passed: isMatch
+      });
+      if (isMatch) passedTests++;
+    }
+
+    const overallSuccess = passedTests === totalTests;
+    
+    // Create HTML response
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Albert Heijn Receipt Test Results</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background: #f0f0f0; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .test-result { margin: 10px 0; padding: 10px; border-left: 4px solid #ddd; }
+        .test-result.passed { border-left-color: #28a745; background: #f8fff8; }
+        .test-result.failed { border-left-color: #dc3545; background: #fff8f8; }
+        .summary { font-size: 18px; font-weight: bold; margin: 20px 0; }
+        .raw-data { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 20px; }
+        pre { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧪 Albert Heijn Receipt Test Results</h1>
+        <p>Testing data extraction from PDF text</p>
+    </div>
+    
+    <div class="summary ${overallSuccess ? 'success' : 'error'}">
+        ${overallSuccess ? '🎉' : '⚠️'} Overall Result: ${passedTests}/${totalTests} tests passed
+    </div>
+    
+    <h2>Test Results:</h2>
+    ${testResults.map(test => `
+        <div class="test-result ${test.passed ? 'passed' : 'failed'}">
+            <strong>${test.passed ? '✅' : '❌'} ${test.field}:</strong><br>
+            Expected: ${test.expected}<br>
+            Actual: ${test.actual}
+        </div>
+    `).join('')}
+    
+    <div class="raw-data">
+        <h3>Raw Extracted Data:</h3>
+        <pre>${JSON.stringify(result, null, 2)}</pre>
+    </div>
+    
+    <div class="raw-data">
+        <h3>Test Text Used:</h3>
+        <pre>${testText}</pre>
+    </div>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    res.status(500).json({
+      error: 'Test failed',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
+
+// Test endpoint for Google Sheets styling
+app.get('/test-styling', async (req, res) => {
+  console.log('🎨 Test styling endpoint called');
+  
+  try {
+    const { setupGoogleSheetsHeaders } = require('./services/improved_invoice_processing.js');
+    
+    console.log('🔄 Testing Google Sheets styling setup...');
+    const result = await setupGoogleSheetsHeaders();
+    
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Sheets Styling Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background: #f0f0f0; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎨 Google Sheets Styling Test</h1>
+    </div>
+    
+    <div class="${result ? 'success' : 'error'}">
+        <h2>${result ? '✅' : '❌'} Styling Setup Result:</h2>
+        <p>${result ? 'Google Sheets styling was successfully applied!' : 'Failed to apply Google Sheets styling. Check environment variables and permissions.'}</p>
+    </div>
+    
+    <h3>Environment Variables Check:</h3>
+    <ul>
+        <li>GOOGLE_SHEETS_SPREADSHEET_ID: ${process.env.GOOGLE_SHEETS_SPREADSHEET_ID ? '✅ Set' : '❌ Missing'}</li>
+        <li>GOOGLE_SHEETS_PRIVATE_KEY: ${process.env.GOOGLE_SHEETS_PRIVATE_KEY ? '✅ Set' : '❌ Missing'}</li>
+        <li>GOOGLE_SHEETS_CLIENT_EMAIL: ${process.env.GOOGLE_SHEETS_CLIENT_EMAIL ? '✅ Set' : '❌ Missing'}</li>
+    </ul>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+    
+  } catch (error) {
+    console.error('❌ Styling test failed:', error);
+    res.status(500).json({
+      error: 'Styling test failed',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
