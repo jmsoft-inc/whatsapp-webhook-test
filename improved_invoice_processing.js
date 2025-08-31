@@ -65,53 +65,73 @@ async function processWithAI(text, invoiceNumber) {
             role: "system",
             content: `Je bent een expert in het extraheren van factuurgegevens uit Nederlandse supermarkt bonnetjes, specifiek Albert Heijn.
             
-            Extraheer de volgende informatie in JSON formaat:
+            Analyseer het bonnetje zeer gedetailleerd en extraheer ALLE beschikbare informatie in JSON formaat:
             {
               "invoice_number": "Factuurnummer (gebruik het meegegeven nummer)",
-              "company": "Bedrijfsnaam (bijv. ALBERT HEIJN)",
+              "company": "ALBERT HEIJN",
               "date": "Datum in YYYY-MM-DD formaat",
               "time": "Tijd in HH:MM formaat",
               "total_amount": "Totaalbedrag (alleen het getal, geen €)",
-              "subtotal": "Subtotaal (alleen het getal)",
+              "subtotal": "Subtotaal na kortingen (alleen het getal)",
+              "subtotal_before_discount": "Subtotaal vóór kortingen (alleen het getal)",
               "tax_9": "BTW 9% (alleen het getal)",
               "tax_21": "BTW 21% (alleen het getal)",
-              "bonus_amount": "Bonus bedrag (alleen het getal, 0 als geen bonus)",
-              "emballage_amount": "Emballage bedrag (alleen het getal, 0 als geen emballage)",
-              "voordeel_amount": "Voordeel bedrag (alleen het getal, 0 als geen voordeel)",
+              "bonus_amount": "Totaal bonus/korting bedrag (alleen het getal, 0 als geen bonus)",
+              "emballage_amount": "Totaal emballage/statiegeld bedrag (alleen het getal, 0 als geen emballage)",
+              "voordeel_amount": "Totaal voordeel/korting bedrag (alleen het getal, 0 als geen voordeel)",
               "koopzegels_amount": "Koopzegels bedrag (alleen het getal, 0 als geen koopzegels)",
+              "koopzegels_count": "Aantal koopzegels (alleen het getal)",
               "currency": "EUR",
               "document_type": "receipt",
               "payment_method": "Betaalmethode (PIN, CONTANT, etc.)",
+              "payment_pin": "Bedrag betaald met PIN (alleen het getal)",
+              "payment_emballage": "Bedrag betaald met emballagebonnen (alleen het getal)",
+              "store_info": {
+                "filiaal": "Filiaal nummer",
+                "adres": "Adres van het filiaal",
+                "telefoon": "Telefoonnummer filiaal",
+                "kassa": "Kassa nummer",
+                "transactie": "Transactie nummer",
+                "terminal": "Terminal ID",
+                "merchant": "Merchant ID"
+              },
+              "loyalty": {
+                "bonuskaart": "Bonuskaart nummer (gemaskeerd)",
+                "air_miles": "Air Miles nummer (gemaskeerd)"
+              },
               "items": [
                 {
-                  "name": "Productnaam",
+                  "name": "Volledige productnaam",
                   "quantity": "Aantal",
-                  "unit_price": "Prijs per stuk",
-                  "total_price": "Totaalprijs",
+                  "unit_price": "Prijs per stuk (alleen het getal)",
+                  "total_price": "Totaalprijs (alleen het getal)",
                   "category": "Categorie (voeding, non-food, etc.)",
-                  "bonus": "Bonus info (ja/nee/onbekend)"
+                  "bonus": "Bonus info (ja/nee/onbekend)",
+                  "bonus_amount": "Bonus bedrag voor dit product (alleen het getal)"
                 }
               ],
               "item_count": "Totaal aantal verschillende artikelen",
               "confidence": "Betrouwbaarheid 0-100",
-              "notes": "Extra opmerkingen",
-              "store_info": {
-                "kassa": "Kassa nummer",
-                "transactie": "Transactie nummer"
+              "notes": "Extra opmerkingen en details",
+              "btw_breakdown": {
+                "btw_9_base": "BTW 9% grondslag (alleen het getal)",
+                "btw_21_base": "BTW 21% grondslag (alleen het getal)"
               }
             }
             
             Belangrijk:
-            - Gebruik exacte bedragen uit de tekst
-            - Zorg dat alle bedragen alleen getallen zijn (geen € of komma's)
-            - Herken Albert Heijn specifieke patronen
-            - Extraheer alle individuele items met hoeveelheden en prijzen
-            - Herken subtotaal, bonus, emballage, voordeel, koopzegels en BTW bedragen
+            - Gebruik EXACTE bedragen uit de tekst (geen € of komma's)
+            - Herken ALLE Albert Heijn specifieke elementen
+            - Extraheer ALLE individuele items met exacte prijzen
+            - Herken subtotaal vóór en na kortingen
+            - Herken alle BTW bedragen en grondslagen
+            - Herken alle betaalmethoden en bedragen
+            - Herken filiaal informatie (nummer, adres, telefoon)
+            - Herken loyalty informatie (bonuskaart, air miles)
+            - Herken terminal/merchant IDs
             - Gebruik het meegegeven factuurnummer
-            - Als subtotaal niet expliciet genoemd wordt, bereken het als total_amount - tax_9 - tax_21 - bonus_amount - emballage_amount - voordeel_amount - koopzegels_amount
-            - Let op: emballage kan ook "statiegeld" genoemd worden
-            - Let op: voordeel kan ook "korting" of "actie" genoemd worden
-            - Let op: koopzegels kunnen ook "zegels" genoemd worden`,
+            - Wees uiterst nauwkeurig - dit is voor boekhouding
+            - Als een waarde niet te bepalen is, gebruik "NB" (Niet Bepaald)`,
           },
           {
             role: "user",
@@ -147,18 +167,21 @@ async function processWithAI(text, invoiceNumber) {
 // Fallback response when AI is not available
 function createFallbackResponse(text, invoiceNumber) {
   // Extract basic information from text
-  const company = text.includes("ALBERT HEIJN") || text.includes("AH") ? "ALBERT HEIJN" : "NB";
+  const company =
+    text.includes("ALBERT HEIJN") || text.includes("AH")
+      ? "ALBERT HEIJN"
+      : "NB";
   const date = new Date().toISOString().split("T")[0];
-  
+
   // Try to extract total amount from text with multiple patterns
   let total = 0;
   const totalPatterns = [
     /(?:TOTAAL|TOTAALBEDRAG|TOTALE|TOTAAL:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i,
     /(?:BETALEN|TE BETALEN)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i,
     /[€]?\s*(\d+[.,]\d{2}|\d+)\s*(?:EUR|€)/i,
-    /(\d+[.,]\d{2})\s*[€]?/i
+    /(\d+[.,]\d{2})\s*[€]?/i,
   ];
-  
+
   for (const pattern of totalPatterns) {
     const match = text.match(pattern);
     if (match) {
@@ -166,72 +189,90 @@ function createFallbackResponse(text, invoiceNumber) {
       break;
     }
   }
-  
+
   // Try to extract subtotal
   let subtotal = 0;
-  const subtotalMatch = text.match(/(?:SUBTOTAAL|SUBTOTAAL:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
+  const subtotalMatch = text.match(
+    /(?:SUBTOTAAL|SUBTOTAAL:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
+  );
   if (subtotalMatch) {
     subtotal = parseFloat(subtotalMatch[1].replace(",", "."));
   }
-  
+
   // Try to extract BTW amounts
   let tax9 = 0;
   let tax21 = 0;
-  const tax9Match = text.match(/(?:BTW\s*9%?|9%\s*BTW)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
-  const tax21Match = text.match(/(?:BTW\s*21%?|21%\s*BTW)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
-  
+  const tax9Match = text.match(
+    /(?:BTW\s*9%?|9%\s*BTW)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
+  );
+  const tax21Match = text.match(
+    /(?:BTW\s*21%?|21%\s*BTW)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
+  );
+
   if (tax9Match) tax9 = parseFloat(tax9Match[1].replace(",", "."));
   if (tax21Match) tax21 = parseFloat(tax21Match[1].replace(",", "."));
-  
+
   // Try to extract bonus, emballage, voordeel, koopzegels
   let bonus = 0;
   let emballage = 0;
   let voordeel = 0;
   let koopzegels = 0;
-  
-  const bonusMatch = text.match(/(?:BONUS|BONUS:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
-  const emballageMatch = text.match(/(?:EMBALLAGE|STATIEGELD|EMBALLAGE:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
-  const voordeelMatch = text.match(/(?:VOORDEEL|KORTING|ACTIE|VOORDEEL:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
-  const koopzegelsMatch = text.match(/(?:KOOPZEGELS|ZEGELS|KOOPZEGELS:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i);
-  
+
+  const bonusMatch = text.match(
+    /(?:BONUS|BONUS:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
+  );
+  const emballageMatch = text.match(
+    /(?:EMBALLAGE|STATIEGELD|EMBALLAGE:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
+  );
+  const voordeelMatch = text.match(
+    /(?:VOORDEEL|KORTING|ACTIE|VOORDEEL:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
+  );
+  const koopzegelsMatch = text.match(
+    /(?:KOOPZEGELS|ZEGELS|KOOPZEGELS:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
+  );
+
   if (bonusMatch) bonus = parseFloat(bonusMatch[1].replace(",", "."));
-  if (emballageMatch) emballage = parseFloat(emballageMatch[1].replace(",", "."));
+  if (emballageMatch)
+    emballage = parseFloat(emballageMatch[1].replace(",", "."));
   if (voordeelMatch) voordeel = parseFloat(voordeelMatch[1].replace(",", "."));
-  if (koopzegelsMatch) koopzegels = parseFloat(koopzegelsMatch[1].replace(",", "."));
-  
+  if (koopzegelsMatch)
+    koopzegels = parseFloat(koopzegelsMatch[1].replace(",", "."));
+
   // Try to extract payment method
   let paymentMethod = "NB";
   if (text.includes("PIN") || text.includes("PINPAS")) paymentMethod = "PIN";
-  else if (text.includes("CONTANT") || text.includes("CASH")) paymentMethod = "CONTANT";
+  else if (text.includes("CONTANT") || text.includes("CASH"))
+    paymentMethod = "CONTANT";
   else if (text.includes("IDEAL")) paymentMethod = "IDEAL";
-  else if (text.includes("CREDITCARD") || text.includes("CREDIT")) paymentMethod = "CREDITCARD";
-  
+  else if (text.includes("CREDITCARD") || text.includes("CREDIT"))
+    paymentMethod = "CREDITCARD";
+
   // Try to extract time
   let time = "NB";
   const timeMatch = text.match(/(\d{1,2}):(\d{2})/);
   if (timeMatch) {
-    time = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+    time = `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}`;
   }
-  
+
   // Try to extract kassa and transactie numbers
   let kassa = "NB";
   let transactie = "NB";
   const kassaMatch = text.match(/(?:KASSA|KAS)\s*(\d+)/i);
   const transactieMatch = text.match(/(?:TRANSACTIE|TRANS|TXN)\s*(\d+)/i);
-  
+
   if (kassaMatch) kassa = kassaMatch[1];
   if (transactieMatch) transactie = transactieMatch[1];
-  
+
   // Try to extract individual items
   const items = [];
   const itemPattern = /([A-Z\s]+)\s+(\d+[.,]\d{2})\s*[€]?/gi;
   let itemMatch;
   let itemCount = 0;
-  
+
   while ((itemMatch = itemPattern.exec(text)) !== null && itemCount < 10) {
     const itemName = itemMatch[1].trim();
     const itemPrice = parseFloat(itemMatch[2].replace(",", "."));
-    
+
     if (itemName.length > 2 && itemPrice > 0) {
       items.push({
         name: itemName,
@@ -244,7 +285,7 @@ function createFallbackResponse(text, invoiceNumber) {
       itemCount++;
     }
   }
-  
+
   // If no items found, create a generic one
   if (items.length === 0) {
     items.push({
@@ -263,7 +304,9 @@ function createFallbackResponse(text, invoiceNumber) {
     date: date,
     time: time,
     total_amount: total,
-    subtotal: subtotal || (total - tax9 - tax21 - bonus - emballage - voordeel - koopzegels),
+    subtotal:
+      subtotal ||
+      total - tax9 - tax21 - bonus - emballage - voordeel - koopzegels,
     tax_9: tax9,
     tax_21: tax21,
     bonus_amount: bonus,
@@ -276,7 +319,8 @@ function createFallbackResponse(text, invoiceNumber) {
     items: items,
     item_count: items.length,
     confidence: 70,
-    notes: "Handmatige verwerking - AI niet beschikbaar, data geëxtraheerd uit tekst",
+    notes:
+      "Handmatige verwerking - AI niet beschikbaar, data geëxtraheerd uit tekst",
     store_info: {
       kassa: kassa,
       transactie: transactie,
@@ -324,25 +368,40 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
       invoiceData.company || "NB",
       invoiceData.date || new Date().toISOString().split("T")[0],
       invoiceData.time || "NB",
-      invoiceData.subtotal || "NB",
+      invoiceData.subtotal || "NB", // Subtotaal na korting
+      invoiceData.subtotal_before_discount || "NB", // Subtotaal vóór korting
       invoiceData.tax_9 || "NB",
       invoiceData.tax_21 || "NB",
-      invoiceData.bonus_amount || "NB",
-      invoiceData.emballage_amount || "NB",
-      invoiceData.voordeel_amount || "NB",
-      invoiceData.koopzegels_amount || "NB",
+      invoiceData.btw_breakdown?.btw_9_base || "NB", // BTW 9% grondslag
+      invoiceData.btw_breakdown?.btw_21_base || "NB", // BTW 21% grondslag
+      invoiceData.bonus_amount || "NB", // Bonus totaal
+      invoiceData.emballage_amount || "NB", // Emballage totaal
+      invoiceData.voordeel_amount || "NB", // Voordeel totaal
+      invoiceData.koopzegels_amount || "NB", // Koopzegels bedrag
+      invoiceData.koopzegels_count || "NB", // Koopzegels aantal
       invoiceData.total_amount || "NB",
+      invoiceData.payment_pin || "NB", // Betaald PIN
+      invoiceData.payment_emballage || "NB", // Betaald Emballage
       invoiceData.currency || "EUR",
       invoiceData.document_type || "receipt",
       invoiceData.item_count || "NB",
       invoiceData.payment_method || "NB",
+      invoiceData.store_info?.filiaal || "NB", // Filiaal
+      invoiceData.store_info?.adres || "NB", // Adres
+      invoiceData.store_info?.telefoon || "NB", // Telefoon
+      invoiceData.store_info?.kassa || "NB", // Kassa
+      invoiceData.store_info?.transactie || "NB", // Transactie
+      invoiceData.store_info?.terminal || "NB", // Terminal ID
+      invoiceData.store_info?.merchant || "NB", // Merchant ID
+      invoiceData.loyalty?.bonuskaart || "NB", // Bonuskaart
+      invoiceData.loyalty?.air_miles || "NB", // Air Miles
       invoiceData.confidence || "NB",
       invoiceData.notes || "",
     ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Invoices!A:S",
+      range: "Invoices!A:AG",
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       resource: {
@@ -362,7 +421,8 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
         item.quantity || "NB",
         item.unit_price || "NB",
         item.total_price || "NB",
-        item.bonus || "NB",
+        item.bonus || "NB", // Bonus info
+        item.bonus_amount || "NB", // Bonus bedrag
         invoiceData.currency || "EUR",
         invoiceData.payment_method || "NB",
         invoiceData.store_info?.kassa || "NB",
@@ -372,7 +432,7 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
 
       await sheets.spreadsheets.values.append({
         spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-        range: "Detail Invoices!A:O",
+        range: "Detail Invoices!A:P",
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
         resource: {
