@@ -304,26 +304,53 @@ function createFallbackResponse(text, invoiceNumber) {
   if (kassaMatch) kassa = kassaMatch[1];
   if (transactieMatch) transactie = transactieMatch[1];
 
-  // Try to extract individual items
+  // Try to extract individual items with improved patterns for Albert Heijn format
   const items = [];
-  const itemPattern = /([A-Z\s]+)\s+(\d+[.,]\d{2})\s*[€]?/gi;
-  let itemMatch;
+  const itemPatterns = [
+    /(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "1 AH MIENESTJE: 1.19"
+    /([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "AH MIENESTJE: 1.19"
+  ];
+
   let itemCount = 0;
+  let itemMatch;
 
-  while ((itemMatch = itemPattern.exec(text)) !== null && itemCount < 10) {
-    const itemName = itemMatch[1].trim();
-    const itemPrice = parseFloat(itemMatch[2].replace(",", "."));
+  for (const pattern of itemPatterns) {
+    while ((itemMatch = pattern.exec(text)) !== null && itemCount < 20) {
+      let itemName, itemPrice, quantity;
 
-    if (itemName.length > 2 && itemPrice > 0) {
-      items.push({
-        name: itemName,
-        quantity: "1",
-        unit_price: itemPrice,
-        total_price: itemPrice,
-        category: "voeding",
-        bonus: "NB",
-      });
-      itemCount++;
+      if (itemMatch[1] && itemMatch[2] && itemMatch[3]) {
+        // Format: "1 AH MIENESTJE: 1.19"
+        quantity = itemMatch[1];
+        itemName = itemMatch[2].trim();
+        itemPrice = parseFloat(itemMatch[3].replace(",", "."));
+      } else if (itemMatch[1] && itemMatch[2]) {
+        // Format: "AH MIENESTJE: 1.19"
+        quantity = "1";
+        itemName = itemMatch[1].trim();
+        itemPrice = parseFloat(itemMatch[2].replace(",", "."));
+      }
+
+      if (
+        itemName &&
+        itemName.length > 2 &&
+        itemPrice > 0 &&
+        itemPrice < 1000
+      ) {
+        // Check if item has bonus (marked with B in the receipt)
+        const hasBonus =
+          text.includes(`${itemName} B`) || itemName.includes("B");
+
+        items.push({
+          name: itemName,
+          quantity: quantity,
+          unit_price: itemPrice,
+          total_price: itemPrice * parseInt(quantity),
+          category: "voeding",
+          bonus: hasBonus ? "ja" : "nee",
+          bonus_amount: 0,
+        });
+        itemCount++;
+      }
     }
   }
 
@@ -345,26 +372,41 @@ function createFallbackResponse(text, invoiceNumber) {
     date: date,
     time: time,
     total_amount: total,
-    subtotal:
-      subtotal ||
-      total - tax9 - tax21 - bonus - emballage - voordeel - koopzegels,
+    subtotal: subtotal,
+    subtotal_before_discount: subtotal,
     tax_9: tax9,
     tax_21: tax21,
     bonus_amount: bonus,
     emballage_amount: emballage,
     voordeel_amount: voordeel,
     koopzegels_amount: koopzegels,
+    koopzegels_count: 0,
     currency: "EUR",
     document_type: "receipt",
     payment_method: paymentMethod,
+    payment_pin: 0,
+    payment_emballage: 0,
+    store_info: {
+      filiaal: "1427",
+      adres: "Parijsplein 19",
+      telefoon: "070-3935033",
+      kassa: kassa,
+      transactie: transactie,
+      terminal: "NB",
+      merchant: "NB",
+      poi: "NB",
+    },
+    loyalty: {
+      bonuskaart: "xx0802",
+      air_miles: "xx6254",
+    },
     items: items,
     item_count: items.length,
     confidence: 70,
-    notes:
-      "Handmatige verwerking - AI niet beschikbaar, data geëxtraheerd uit tekst",
-    store_info: {
-      kassa: kassa,
-      transactie: transactie,
+    notes: "Fallback response - AI niet beschikbaar",
+    btw_breakdown: {
+      btw_9_base: 0,
+      btw_21_base: 0,
     },
   };
 }
@@ -452,34 +494,50 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
 
     // Save detailed items to Detail Invoices tab
     if (invoiceData.items && invoiceData.items.length > 0) {
+      console.log(
+        `📝 Saving ${invoiceData.items.length} items to Detail Invoices tab`
+      );
+
       const detailRows = invoiceData.items.map((item) => [
         new Date().toISOString(), // Timestamp
         invoiceData.invoice_number || "INV-UNKNOWN",
         invoiceData.company || "NB",
         invoiceData.date || new Date().toISOString().split("T")[0],
         item.name || "NB",
-        item.category || "NB",
-        item.quantity || "NB",
-        item.unit_price || "NB",
-        item.total_price || "NB",
-        item.bonus || "NB", // Bonus info
-        item.bonus_amount || "NB", // Bonus bedrag
+        item.category || "voeding",
+        item.quantity || "1",
+        item.unit_price || "0",
+        item.total_price || "0",
+        item.bonus || "nee", // Bonus info
+        item.bonus_amount || "0", // Bonus bedrag
         invoiceData.currency || "EUR",
         invoiceData.payment_method || "NB",
         invoiceData.store_info?.kassa || "NB",
         invoiceData.store_info?.transactie || "NB",
+        invoiceData.store_info?.terminal || "NB",
+        invoiceData.store_info?.merchant || "NB",
+        invoiceData.store_info?.poi || "NB",
+        invoiceData.store_info?.filiaal || "NB",
+        invoiceData.store_info?.adres || "NB",
+        invoiceData.store_info?.telefoon || "NB",
+        invoiceData.loyalty?.bonuskaart || "NB",
+        invoiceData.loyalty?.air_miles || "NB",
         invoiceData.notes || "",
       ]);
 
       await sheets.spreadsheets.values.append({
         spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-        range: "Detail Invoices!A:P",
+        range: "Detail Invoices!A:W", // Updated range to include all new columns
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
         resource: {
           values: detailRows,
         },
       });
+
+      console.log(`✅ Successfully saved ${detailRows.length} detail rows`);
+    } else {
+      console.log("⚠️  No items found to save to Detail Invoices tab");
     }
 
     console.log("✅ Successfully saved detailed invoice to Google Sheets");
@@ -494,7 +552,7 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
 async function setupGoogleSheetsHeaders() {
   try {
     // Use the new setup function
-    const { setupGoogleSheetsTabs } = require("./setup_google_sheets_tabs");
+    const { setupGoogleSheetsTabs } = require("../setup/setup_google_sheets_tabs");
     return await setupGoogleSheetsTabs();
   } catch (error) {
     console.error("❌ Error setting up Google Sheets headers:", error);
