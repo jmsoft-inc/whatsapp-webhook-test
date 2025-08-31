@@ -142,7 +142,7 @@ async function setupGoogleSheetsTabs() {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Invoices!A1:AG1",
+      range: "Invoices!A1:AH1",
       valueInputOption: "RAW",
       resource: {
         values: [invoicesHeaders],
@@ -194,7 +194,7 @@ async function setupGoogleSheetsTabs() {
             startRowIndex: 0,
             endRowIndex: 1,
             startColumnIndex: 0,
-            endColumnIndex: invoicesHeaders.length,
+            endColumnIndex: 34,
           },
           cell: {
             userEnteredFormat: {
@@ -242,7 +242,7 @@ async function setupGoogleSheetsTabs() {
             startRowIndex: 1,
             endRowIndex: 1000,
             startColumnIndex: 0,
-            endColumnIndex: invoicesHeaders.length,
+            endColumnIndex: 34,
           },
           cell: {
             userEnteredFormat: {
@@ -302,7 +302,7 @@ async function setupGoogleSheetsTabs() {
             )?.properties.sheetId,
             dimension: "COLUMNS",
             startIndex: 0,
-            endIndex: invoicesHeaders.length,
+            endIndex: 34,
           },
         },
       },
