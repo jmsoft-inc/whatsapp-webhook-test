@@ -487,11 +487,34 @@ async function processFileMessage(message, fileType) {
       console.log("📄 Receipt file saved:", fileResult.filename);
     } else {
       console.log("⚠️ Could not save receipt file:", fileResult.error);
+      await sendWhatsAppMessage(
+        from,
+        `❌ Kon het bestand niet opslaan: ${fileResult.error}\n\n💡 Probeer het bestand opnieuw te sturen of neem contact op met support.`
+      );
+      return;
     }
 
     // Extract text from file
     const extractedText = await extractTextFromFile(fileResult.filepath, mimeType);
     console.log("📝 Extracted text:", extractedText);
+
+    // Check if text extraction failed
+    if (extractedText.includes("PDF Text Extraction Failed") || extractedText.includes("Unsupported file type")) {
+      await sendWhatsAppMessage(
+        from,
+        `❌ Kon geen tekst uit het bestand halen.\n\n${extractedText}\n\n💡 Tips:\n• Stuur een screenshot van het bonnetje\n• Zorg dat het bestand leesbaar is\n• Probeer een andere foto van het bonnetje`
+      );
+      return;
+    }
+
+    // Check if extracted text is too short or empty
+    if (!extractedText || extractedText.trim().length < 20) {
+      await sendWhatsAppMessage(
+        from,
+        `❌ Kon geen bruikbare tekst uit het bestand halen.\n\nExtracted text: "${extractedText}"\n\n💡 Tips:\n• Stuur een duidelijke foto van het bonnetje\n• Zorg dat alle tekst leesbaar is\n• Probeer het bestand opnieuw te sturen`
+      );
+      return;
+    }
 
     // Process with improved AI
     const invoiceData = await processWithAI(extractedText, invoiceNumber);
@@ -500,7 +523,7 @@ async function processFileMessage(message, fileType) {
     if (!invoiceData) {
       await sendWhatsAppMessage(
         from,
-        "❌ Kon de bonnetje data niet verwerken."
+        "❌ Kon de bonnetje data niet verwerken.\n\n💡 Probeer een andere foto van het bonnetje te sturen."
       );
       return;
     }

@@ -106,13 +106,28 @@ async function extractTextFromFile(filepath, mimeType) {
       return await extractTextFromPDF(filepath);
     } else if (mimeType.startsWith('text/')) {
       return await extractTextFromTextFile(filepath);
+    } else if (mimeType.includes('word') || mimeType.includes('document')) {
+      return await extractTextFromTextFile(filepath); // Try as text file
     } else {
       console.log(`⚠️ Unsupported file type: ${mimeType}`);
-      return "Unsupported file type - cannot extract text";
+      return `Unsupported file type: ${mimeType}
+
+Dit bestandstype wordt nog niet ondersteund.
+
+Ondersteunde formaten:
+• Afbeeldingen (JPG, PNG, GIF, WebP)
+• PDF bestanden
+• Tekstbestanden (TXT)
+• Word documenten (DOC, DOCX)
+
+Probeer het bestand als afbeelding te sturen of neem contact op voor ondersteuning.`;
     }
   } catch (error) {
     console.error(`❌ Error extracting text from file:`, error.message);
-    return `Error extracting text: ${error.message}`;
+    return `Error extracting text: ${error.message}
+
+Er is een fout opgetreden bij het lezen van het bestand.
+Probeer het bestand opnieuw te sturen of neem contact op met support.`;
   }
 }
 
@@ -194,33 +209,63 @@ Vragen over je kassabon? Onze collega's helpen je graag`;
 }
 
 /**
- * Extract text from PDF using pdf-parse or similar library
+ * Extract text from PDF using multiple methods
  */
 async function extractTextFromPDF(filepath) {
   console.log(`📄 Extracting text from PDF: ${filepath}`);
   
+  // Method 1: Try pdf-parse library
   try {
-    // Check if pdf-parse is available
-    let pdfParse;
-    try {
-      pdfParse = require('pdf-parse');
-    } catch (error) {
-      console.log('⚠️ pdf-parse not available, using fallback text extraction');
-      return await extractTextFromPDFFallback(filepath);
-    }
-
-    // Read PDF file
+    const pdfParse = require('pdf-parse');
     const dataBuffer = fs.readFileSync(filepath);
-    
-    // Parse PDF
     const data = await pdfParse(dataBuffer);
     
-    console.log(`✅ Extracted ${data.text.length} characters from PDF`);
-    return data.text;
+    if (data.text && data.text.trim().length > 10) {
+      console.log(`✅ Extracted ${data.text.length} characters from PDF using pdf-parse`);
+      return data.text;
+    }
   } catch (error) {
-    console.error(`❌ Error extracting text from PDF:`, error.message);
-    return await extractTextFromPDFFallback(filepath);
+    console.log(`⚠️ pdf-parse failed: ${error.message}`);
   }
+
+  // Method 2: Try pdftotext system tool
+  try {
+    const text = await extractTextFromPDFFallback(filepath);
+    if (text && text.trim().length > 10) {
+      console.log(`✅ Extracted ${text.length} characters from PDF using pdftotext`);
+      return text;
+    }
+  } catch (error) {
+    console.log(`⚠️ pdftotext failed: ${error.message}`);
+  }
+
+  // Method 3: Try to read as text file (in case it's a text-based PDF)
+  try {
+    const content = fs.readFileSync(filepath, 'utf8');
+    if (content && content.trim().length > 10) {
+      console.log(`✅ Extracted ${content.length} characters from PDF as text`);
+      return content;
+    }
+  } catch (error) {
+    console.log(`⚠️ Text file reading failed: ${error.message}`);
+  }
+
+  // Method 4: Return detailed error message
+  console.log(`❌ All PDF extraction methods failed`);
+  return `PDF Text Extraction Failed
+
+Het PDF bestand kon niet worden gelezen. Mogelijke oorzaken:
+• Het PDF bestand is beveiligd of versleuteld
+• Het PDF bestand bevat alleen afbeeldingen (geen tekst)
+• Het PDF bestand is beschadigd
+• Het PDF bestand is te groot
+
+Probeer het volgende:
+• Stuur een screenshot van het bonnetje
+• Zorg dat het PDF bestand niet beveiligd is
+• Probeer het bestand als afbeelding te sturen
+
+Voor nu wordt er een standaard bonnetje gebruikt voor verwerking.`;
 }
 
 /**
