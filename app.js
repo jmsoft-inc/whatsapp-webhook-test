@@ -848,10 +848,10 @@ BONUSKAART: xx0802
 AIRMILES NR.: xx6254
 1 BOODSCH TAS: 1,59
 1 DZH HV MELK: 1,99
-1 DZH YOGHURT: 2,29
-1 HONING: 2,25
-3 BAPAO: 0,99
-1 DZH CREME FR: 1,09
+            1 DZH YOGHURT: 2,29
+            1 HONING: 2,25
+            3 BAPAO: 0,99 2,97
+            1 DZH CREME FR: 1,09
 1 ZAANSE HOEVE: 2,69 25%
 1 BOTERH WORST: 1,49
 1 SCHOUDERHAM: 1,79
@@ -914,7 +914,7 @@ Vragen over je kassabon? Onze collega's helpen je graag`;
     console.log('📝 Testing createFallbackResponse function...');
     const result = createFallbackResponse(testText, 'TEST001');
     
-    // Define expected values
+    // Define expected values based on ChatGPT-5 analysis
     const expected = {
       date: "2025-08-22",
       time: "12:55",

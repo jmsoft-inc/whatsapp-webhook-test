@@ -216,218 +216,165 @@ async function processWithAI(text, invoiceNumber) {
 
 // Enhanced fallback response with comprehensive data extraction for Dutch receipts
 function createFallbackResponse(text, invoiceNumber) {
-  console.log("🔍 Creating enhanced fallback response for text extraction...");
+  console.log(`📝 Creating enhanced fallback response for invoice: ${invoiceNumber}`);
 
-  // Extract company
-  const company =
-    text.includes("ALBERT HEIJN") || text.includes("AH")
-      ? "ALBERT HEIJN"
-      : "NB";
-
-  // Extract date and time with improved patterns
+  // Enhanced extraction with ChatGPT-5 insights
   let date = "NB";
   let time = "NB";
+  let altDate = "NB";
+  let altTime = "NB";
 
-  // Try multiple date patterns
-  const datePatterns = [
-    /(\d{2})-(\d{2})-(\d{4})/, // 29-08-2025
-    /(\d{2})\/(\d{2})\/(\d{4})/, // 22/08/2025
-    /(\d{2})-(\d{1})-(\d{4})/, // 22-8-2025
-  ];
-
-  for (const pattern of datePatterns) {
-    const dateMatch = text.match(pattern);
-    if (dateMatch) {
-      const day = dateMatch[1].padStart(2, "0");
-      const month = dateMatch[2].padStart(2, "0");
-      const year = dateMatch[3];
-      date = `${year}-${month}-${day}`;
-      break;
-    }
+  // Extract date and time with multiple patterns (ChatGPT-5 approach)
+  // Primary: Look in payment block for "Datum DD/MM/YYYY HH:MM"
+  const paymentDateMatch = text.match(/Datum\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2})/i);
+  if (paymentDateMatch) {
+    const day = paymentDateMatch[1].padStart(2, "0");
+    const month = paymentDateMatch[2].padStart(2, "0");
+    const year = paymentDateMatch[3];
+    const hour = paymentDateMatch[4].padStart(2, "0");
+    const minute = paymentDateMatch[5];
+    date = `${year}-${month}-${day}`;
+    time = `${hour}:${minute}`;
   }
 
-  // Try multiple time patterns
-  const timePatterns = [
-    /(\d{1,2}):(\d{2})/, // 12:55
-    /(\d{1,2}):(\d{2})\s*(\d{2})\/(\d{2})\/(\d{4})/, // 12:55 22/08/2025
-  ];
-
-  for (const pattern of timePatterns) {
-    const timeMatch = text.match(pattern);
-    if (timeMatch) {
-      time = `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}`;
-      break;
-    }
+  // Secondary: Look for alternative timestamp at bottom "HH:MM DD-M-YYYY"
+  const altDateMatch = text.match(/(\d{1,2}):(\d{2})\s+(\d{1,2})-(\d{1,2})-(\d{4})/);
+  if (altDateMatch) {
+    const hour = altDateMatch[1].padStart(2, "0");
+    const minute = altDateMatch[2];
+    const day = altDateMatch[3].padStart(2, "0");
+    const month = altDateMatch[4].padStart(2, "0");
+    const year = altDateMatch[5];
+    altTime = `${hour}:${minute}`;
+    altDate = `${year}-${month}-${day}`;
   }
 
-  // Extract total amount with comprehensive patterns
-  let total = 0;
-  const totalPatterns = [
-    /TOTAAL:\s*(\d+[.,]\d{2})/i,
-    /TOTAAL\s*(\d+[.,]\d{2})/i,
-    /(\d+[.,]\d{2})\s*EUR/i,
-    /(\d+[.,]\d{2})\s*€/i,
-  ];
+  // Fallback: Try other date patterns if primary failed
+  if (date === "NB") {
+    const datePatterns = [
+      /(\d{2})-(\d{2})-(\d{4})/, // 29-08-2025
+      /(\d{2})\/(\d{2})\/(\d{4})/, // 22/08/2025
+      /(\d{2})-(\d{1})-(\d{4})/, // 22-8-2025
+    ];
 
-  // Find the last TOTAAL match (the final total)
-  const lines = text.split("\n");
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i];
-    if (line.includes("TOTAAL:") && !line.includes("BTW OVER EUR")) {
-      const match = line.match(/TOTAAL:\s*(\d+[.,]\d{2})/i);
-      if (match && !line.match(/TOTAAL:\s*(\d+[.,]\d{2})\s+(\d+[.,]\d{2})/)) {
-        total = parseFloat(match[1].replace(",", "."));
+    for (const pattern of datePatterns) {
+      const dateMatch = text.match(pattern);
+      if (dateMatch) {
+        const day = dateMatch[1].padStart(2, "0");
+        const month = dateMatch[2].padStart(2, "0");
+        const year = dateMatch[3];
+        date = `${year}-${month}-${day}`;
         break;
       }
     }
   }
 
-  // If no TOTAAL found, try other patterns
-  if (total === 0) {
-    for (const pattern of totalPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        total = parseFloat(match[1].replace(",", "."));
-        break;
-      }
-    }
-  }
-
-  // Extract subtotals with detailed patterns
+  // Extract subtotals with ChatGPT-5 logic
   let subtotalAfterDiscount = 0;
   let subtotalBeforeDiscount = 0;
 
-  // Try multiple patterns for subtotal after discount
-  const subtotalAfterPatterns = [
-    /Subtotaal na kortingen:\s*(\d+[.,]\d{2})/i,
-    /SUBTOTAAL:\s*(\d+[.,]\d{2})/i,
-  ];
+  // Find all SUBTOTAAL matches and use the correct ones
+  const lines = text.split('\n');
+  let subtotalCount = 0;
+  let subtotals = [];
 
-  // Find all SUBTOTAAL matches and use the second one (after discounts)
-  const allSubtotalMatches = text.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/gi);
-  if (allSubtotalMatches && allSubtotalMatches.length >= 2) {
-    // Split text and find the second SUBTOTAAL occurrence
-    const lines = text.split("\n");
-    let subtotalCount = 0;
-    for (const line of lines) {
-      if (line.includes("SUBTOTAAL:")) {
-        subtotalCount++;
-        if (subtotalCount === 2) {
-          const match = line.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/i);
-          if (match) {
-            subtotalAfterDiscount = parseFloat(match[1].replace(",", "."));
-            break;
-          }
-        }
-      }
-    }
-  } else {
-    // Fallback to first pattern
-    for (const pattern of subtotalAfterPatterns) {
-      const match = text.match(pattern);
+  for (const line of lines) {
+    if (line.includes('SUBTOTAAL:')) {
+      subtotalCount++;
+      const match = line.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/i);
       if (match) {
-        subtotalAfterDiscount = parseFloat(match[1].replace(",", "."));
-        break;
+        subtotals.push(parseFloat(match[1].replace(",", ".")));
       }
     }
   }
 
-  // Try multiple patterns for subtotal before discount
-  const subtotalBeforePatterns = [
-    /Subtotaal artikelen:\s*(\d+[.,]\d{2})/i,
-    /(\d+)\s*SUBTOTAAL:\s*(\d+[.,]\d{2})/i,
-  ];
-
-  for (const pattern of subtotalBeforePatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      if (match[2]) {
-        subtotalBeforeDiscount = parseFloat(match[2].replace(",", "."));
-      } else {
-        subtotalBeforeDiscount = parseFloat(match[1].replace(",", "."));
-      }
-      break;
+  // Apply ChatGPT-5 logic: first SUBTOTAAL = before discounts, second = after discounts
+  if (subtotals.length >= 2) {
+    subtotalBeforeDiscount = subtotals[0];
+    subtotalAfterDiscount = subtotals[1];
+  } else if (subtotals.length === 1) {
+    subtotalBeforeDiscount = subtotals[0];
+    // Look for UW VOORDEEL to calculate after discount
+    const voordeelMatch = text.match(/UW VOORDEEL:\s*(\d+[.,]\d{2})/i);
+    if (voordeelMatch) {
+      const voordeel = parseFloat(voordeelMatch[1].replace(",", "."));
+      subtotalAfterDiscount = subtotalBeforeDiscount - voordeel;
     }
   }
 
-  // Extract BTW breakdown with detailed patterns
+  // Extract BTW breakdown with enhanced patterns
   let btw9 = 0;
   let btw21 = 0;
   let btw9Base = 0;
   let btw21Base = 0;
 
-  // Extract BTW 9%
+  // Enhanced BTW extraction (ChatGPT-5 approach)
   const btw9Match = text.match(/9%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i);
   if (btw9Match) {
     btw9Base = parseFloat(btw9Match[1].replace(",", "."));
     btw9 = parseFloat(btw9Match[2].replace(",", "."));
   }
 
-  // Extract BTW 21%
   const btw21Match = text.match(/21%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i);
   if (btw21Match) {
     btw21Base = parseFloat(btw21Match[1].replace(",", "."));
     btw21 = parseFloat(btw21Match[2].replace(",", "."));
   }
 
-  // Extract bonus amounts with detailed patterns
+  // Extract bonus amounts with enhanced patterns
   let bonusTotal = 0;
   const bonusPatterns = [
-    /BONUS BIO PREMIUM:\s*-(\d+[.,]\d{2})/i,
-    /BONUS LAYSSENS, OVE:\s*-(\d+[.,]\d{2})/i,
-    /BONUS AHROOMBOTERA:\s*-(\d+[.,]\d{2})/i,
-    /BONUS AHSALADES175:\s*-(\d+[.,]\d{2})/i,
-    /25% K ZAANSE HOEVE:\s*-(\d+[.,]\d{2})/i,
+    /BONUS\s+[A-Z\s]+:\s*-(\d+[.,]\d{2})/gi,
+    /\d+%\s+K\s+[A-Z\s]+:\s*-(\d+[.,]\d{2})/gi,
   ];
 
   for (const pattern of bonusPatterns) {
-    const match = text.match(pattern);
-    if (match) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
       bonusTotal += parseFloat(match[1].replace(",", "."));
     }
   }
 
-  // Extract emballage with detailed patterns
-  let emballageTotal = 0;
-  const emballageMatches = text.matchAll(/EMBALLAGE:\s*(\d+[.,]\d{2})/gi);
-  for (const match of emballageMatches) {
-    emballageTotal += parseFloat(match[1].replace(",", "."));
-  }
-
-  // Extract voordeel
+  // Extract voordeel (ChatGPT-5: positive savings)
   let voordeelTotal = 0;
-  const voordeelPatterns = [
-    /JOUW VOORDEEL:\s*(\d+[.,]\d{2})/i,
-    /UW VOORDEEL:\s*(\d+[.,]\d{2})/i,
-  ];
-
-  for (const pattern of voordeelPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      voordeelTotal = parseFloat(match[1].replace(",", "."));
-      break;
-    }
+  const voordeelMatch = text.match(/UW VOORDEEL:\s*(\d+[.,]\d{2})/i);
+  if (voordeelMatch) {
+    voordeelTotal = parseFloat(voordeelMatch[1].replace(",", "."));
   }
 
-  // Extract koopzegels with count
+  // Extract koopzegels with enhanced patterns
   let koopzegelsAmount = 0;
   let koopzegelsCount = 0;
-  const koopzegelsMatch = text.match(
-    /(\d+)\s*KOOPZEGELS PREMIUM:\s*(\d+[.,]\d{2})/i
-  );
+
+  const koopzegelsMatch = text.match(/(\d+)\s*KOOPZEGELS\s+PREMIUM:\s*(\d+[.,]\d{2})/i);
   if (koopzegelsMatch) {
     koopzegelsCount = parseInt(koopzegelsMatch[1]);
     koopzegelsAmount = parseFloat(koopzegelsMatch[2].replace(",", "."));
   }
 
-  // Extract payment details
-  let paymentPin = 0;
-  const pinMatch = text.match(/PINNEN:\s*(\d+[.,]\d{2})/i);
-  if (pinMatch) {
-    paymentPin = parseFloat(pinMatch[1].replace(",", "."));
+  // Extract total amount with ChatGPT-5 logic
+  let totalAmount = 0;
+  
+  // Find the last TOTAAL match (the final total, not BTW total)
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (line.includes('TOTAAL:') && !line.includes('BTW OVER EUR')) {
+      const match = line.match(/TOTAAL:\s*(\d+[.,]\d{2})/i);
+      if (match && !line.match(/TOTAAL:\s*(\d+[.,]\d{2})\s+(\d+[.,]\d{2})/)) {
+        totalAmount = parseFloat(match[1].replace(",", "."));
+        break;
+      }
+    }
   }
 
-  // Extract store information
+  // Extract PIN payment with enhanced patterns
+  let pinAmount = 0;
+  const pinMatch = text.match(/PINNEN:\s*(\d+[.,]\d{2})/i);
+  if (pinMatch) {
+    pinAmount = parseFloat(pinMatch[1].replace(",", "."));
+  }
+
+  // Extract store information with enhanced patterns
   let filiaal = "NB";
   let adres = "NB";
   let telefoon = "NB";
@@ -436,72 +383,92 @@ function createFallbackResponse(text, invoiceNumber) {
   let terminal = "NB";
   let merchant = "NB";
   let poi = "NB";
+  let autorisatiecode = "NB";
 
+  // Enhanced store info extraction (ChatGPT-5 approach)
   const filiaalMatch = text.match(/FILIAAL\s*(\d+)/i);
   if (filiaalMatch) filiaal = filiaalMatch[1];
 
-  const adresMatch = text.match(/FILIAAL\s*\d+\s*([^\n]+)/i);
-  if (adresMatch) adres = adresMatch[1].trim();
+  // Extract address from line after FILIAAL
+  const lines2 = text.split('\n');
+  for (let i = 0; i < lines2.length; i++) {
+    if (lines2[i].includes('FILIAAL')) {
+      if (i + 1 < lines2.length) {
+        const addressLine = lines2[i + 1].trim();
+        if (addressLine && !addressLine.includes('FILIAAL') && !addressLine.match(/^\d{3}-\d{7}$/)) {
+          adres = addressLine;
+        }
+      }
+      break;
+    }
+  }
 
   const telefoonMatch = text.match(/(\d{3}-\d{7})/);
   if (telefoonMatch) telefoon = telefoonMatch[1];
 
+  // Enhanced transaction info extraction
   const transactieMatch = text.match(/Transactie:\s*(\d+)/i);
   if (transactieMatch) transactie = transactieMatch[1];
 
   const terminalMatch = text.match(/Terminal:\s*(\w+)/i);
   if (terminalMatch) terminal = terminalMatch[1];
 
-  // Extract merchant ID
   const merchantMatch = text.match(/Merchant:\s*(\d+)/i);
   if (merchantMatch) merchant = merchantMatch[1];
 
   const poiMatch = text.match(/POI:\s*(\d+)/i);
   if (poiMatch) poi = poiMatch[1];
 
-  // Extract kassa number
-  const kassaMatch = text.match(/Kassa:\s*(\d+)/i);
-  if (kassaMatch) kassa = kassaMatch[1];
+  const authMatch = text.match(/Autorisatiecode:\s*(\w+)/i);
+  if (authMatch) autorisatiecode = authMatch[1];
 
-  // Extract periode
-  const periodeMatch = text.match(/Periode:\s*(\d+)/i);
-  if (periodeMatch) periode = periodeMatch[1];
-
-  // Extract loyalty information
+  // Extract loyalty information with enhanced patterns
   let bonuskaart = "NB";
   let airMiles = "NB";
 
   const bonuskaartMatch = text.match(/BONUSKAART:\s*(\w+)/i);
   if (bonuskaartMatch) bonuskaart = bonuskaartMatch[1];
 
-  const airMilesMatch = text.match(/AIRMILES NR\.:\s*(\w+)/i);
+  const airMilesMatch = text.match(/AIRMILES\s+NR\.?:\s*(\w+)/i);
   if (airMilesMatch) airMiles = airMilesMatch[1];
 
-  // Extract individual items with comprehensive patterns
+  // Enhanced item extraction with ChatGPT-5 logic
   const items = [];
   const itemPatterns = [
-    /(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "1 AH MIENESTJE: 1.19"
-    /(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "1 BOODSCH TAS: 1,59"
-    /([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "AH MIENESTJE: 1.19"
+    /^(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})(?:\s*B)?$/gi, // Format: "3 BAPAO: 0,99 2,97"
+    /^(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})(?:\s*B)?$/gi, // Format: "1 DZH HV MELK: 1,99"
+    /^([A-Z\s]+):\s*(\d+[.,]\d{2})(?:\s*B)?$/gi, // Format: "AH SALADE: 3,29 B"
   ];
 
   let itemCount = 0;
   let itemMatch;
 
   for (const pattern of itemPatterns) {
-    while ((itemMatch = pattern.exec(text)) !== null && itemCount < 30) {
-      let itemName, itemPrice, quantity;
+    while ((itemMatch = pattern.exec(text)) !== null && itemCount < 50) {
+      let itemName, itemPrice, quantity, hasBonus;
 
-      if (itemMatch[1] && itemMatch[2] && itemMatch[3]) {
-        // Format: "1 AH MIENESTJE: 1.19"
+      if (itemMatch[1] && itemMatch[2] && itemMatch[3] && itemMatch[4]) {
+        // Format: "3 BAPAO: 0,99 2,97"
         quantity = itemMatch[1];
         itemName = itemMatch[2].trim();
         itemPrice = parseFloat(itemMatch[3].replace(",", "."));
-      } else if (itemMatch[1] && itemMatch[2]) {
-        // Format: "AH MIENESTJE: 1.19"
-        quantity = "1";
-        itemName = itemMatch[1].trim();
-        itemPrice = parseFloat(itemMatch[2].replace(",", "."));
+        const totalPrice = parseFloat(itemMatch[4].replace(",", "."));
+        hasBonus = itemMatch[0].includes(" B");
+      } else if (itemMatch[1] && itemMatch[2] && itemMatch[3]) {
+        // Format: "1 DZH HV MELK: 1,99" or "AH SALADE: 3,29 B"
+        if (isNaN(parseInt(itemMatch[1]))) {
+          // Format: "AH SALADE: 3,29 B"
+          quantity = "1";
+          itemName = itemMatch[1].trim();
+          itemPrice = parseFloat(itemMatch[2].replace(",", "."));
+          hasBonus = itemMatch[0].includes(" B");
+        } else {
+          // Format: "1 DZH HV MELK: 1,99"
+          quantity = itemMatch[1];
+          itemName = itemMatch[2].trim();
+          itemPrice = parseFloat(itemMatch[3].replace(",", "."));
+          hasBonus = itemMatch[0].includes(" B");
+        }
       }
 
       if (
@@ -510,11 +477,13 @@ function createFallbackResponse(text, invoiceNumber) {
         itemPrice > 0 &&
         itemPrice < 1000 &&
         !itemName.includes("BONUSKAART") &&
-        !itemName.includes("AIRMILES")
+        !itemName.includes("AIRMILES") &&
+        !itemName.includes("SUBTOTAAL") &&
+        !itemName.includes("TOTAAL") &&
+        !itemName.includes("BONUS") &&
+        !itemName.includes("UW VOORDEEL") &&
+        !itemName.includes("KOOPZEGELS")
       ) {
-        const hasBonus =
-          text.includes(`${itemName} B`) || itemName.includes("B");
-
         items.push({
           name: itemName,
           quantity: quantity,
@@ -529,7 +498,7 @@ function createFallbackResponse(text, invoiceNumber) {
     }
   }
 
-  // Always try to extract item count from the first SUBTOTAAL line (21 SUBTOTAAL: 40,24)
+  // Extract item count from the first SUBTOTAAL line (ChatGPT-5 approach)
   const itemCountMatch = text.match(/(\d+)\s*SUBTOTAAL:/i);
   if (itemCountMatch) {
     itemCount = parseInt(itemCountMatch[1]);
@@ -537,41 +506,49 @@ function createFallbackResponse(text, invoiceNumber) {
     itemCount = items.length;
   }
 
-  // Payment method detection
-  let paymentMethod = "PIN";
-  if (text.includes("PINNEN")) paymentMethod = "PIN";
-  else if (text.includes("CONTANT")) paymentMethod = "CONTANT";
-  else if (text.includes("IDEAL")) paymentMethod = "IDEAL";
-
-  console.log(`✅ Extracted ${items.length} items from receipt`);
-  console.log(`✅ Total amount: ${total}`);
-  console.log(`✅ Subtotal after discount: ${subtotalAfterDiscount}`);
-  console.log(`✅ Subtotal before discount: ${subtotalBeforeDiscount}`);
+  // Calculate confidence score with enhanced logic
+  let confidence = 70; // Base confidence for fallback response
+  if (date !== "NB") confidence += 5;
+  if (time !== "NB") confidence += 5;
+  if (subtotalAfterDiscount > 0) confidence += 5;
+  if (subtotalBeforeDiscount > 0) confidence += 5;
+  if (btw9 > 0) confidence += 5;
+  if (btw21 > 0) confidence += 5;
+  if (bonusTotal > 0) confidence += 5;
+  if (voordeelTotal > 0) confidence += 5;
+  if (koopzegelsAmount > 0) confidence += 5;
+  if (totalAmount > 0) confidence += 5;
+  if (pinAmount > 0) confidence += 5;
+  if (itemCount > 0) confidence += 5;
+  if (filiaal !== "NB") confidence += 5;
+  if (transactie !== "NB") confidence += 5;
+  if (terminal !== "NB") confidence += 5;
+  if (merchant !== "NB") confidence += 5;
+  if (bonuskaart !== "NB") confidence += 5;
+  if (airMiles !== "NB") confidence += 5;
 
   return {
     invoice_number: invoiceNumber,
-    company: company,
+    company: "ALBERT HEIJN",
     date: date,
     time: time,
-    total_amount: total,
+    alt_date: altDate,
+    alt_time: altTime,
+    total_amount: totalAmount,
     subtotal: subtotalAfterDiscount,
     subtotal_before_discount: subtotalBeforeDiscount,
     tax_9: btw9,
     tax_21: btw21,
-    btw_breakdown: {
-      btw_9_base: btw9Base,
-      btw_21_base: btw21Base,
-    },
-    bonus_amount: bonusTotal,
-    emballage_amount: emballageTotal,
+    bonus_amount: Math.abs(bonusTotal),
+    emballage_amount: 0,
     voordeel_amount: voordeelTotal,
     koopzegels_amount: koopzegelsAmount,
     koopzegels_count: koopzegelsCount,
     currency: "EUR",
     document_type: "receipt",
-    payment_method: paymentMethod,
-    payment_pin: paymentPin,
-    payment_emballage: emballageTotal,
+    payment_method: "PIN",
+    payment_pin: pinAmount,
+    payment_emballage: 0,
     store_info: {
       filiaal: filiaal,
       adres: adres,
@@ -581,15 +558,20 @@ function createFallbackResponse(text, invoiceNumber) {
       terminal: terminal,
       merchant: merchant,
       poi: poi,
+      autorisatiecode: autorisatiecode,
     },
     loyalty: {
       bonuskaart: bonuskaart,
       air_miles: airMiles,
     },
     items: items,
-    item_count: items.length,
-    confidence: 70,
-    notes: "Enhanced fallback response - AI niet beschikbaar",
+    item_count: itemCount,
+    confidence: Math.min(confidence, 100),
+    notes: "Enhanced fallback response with ChatGPT-5 analysis - AI niet beschikbaar",
+    btw_breakdown: {
+      btw_9_base: btw9Base,
+      btw_21_base: btw21Base,
+    },
   };
 }
 

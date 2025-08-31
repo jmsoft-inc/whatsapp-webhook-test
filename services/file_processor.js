@@ -42,7 +42,7 @@ async function saveReceiptFile(mediaUrl, invoiceNumber, mimeType) {
 
     // Determine file extension based on MIME type
     const fileExtension = getFileExtension(mimeType);
-    
+
     // Generate filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = `${invoiceNumber}_${timestamp}${fileExtension}`;
@@ -63,7 +63,10 @@ async function saveReceiptFile(mediaUrl, invoiceNumber, mimeType) {
       extension: fileExtension,
     };
   } catch (error) {
-    console.error(`❌ Error saving file for invoice ${invoiceNumber}:`, error.message);
+    console.error(
+      `❌ Error saving file for invoice ${invoiceNumber}:`,
+      error.message
+    );
     return {
       success: false,
       error: error.message,
@@ -76,20 +79,22 @@ async function saveReceiptFile(mediaUrl, invoiceNumber, mimeType) {
  */
 function getFileExtension(mimeType) {
   const mimeToExtension = {
-    'image/jpeg': '.jpg',
-    'image/jpg': '.jpg',
-    'image/png': '.png',
-    'image/gif': '.gif',
-    'image/webp': '.webp',
-    'application/pdf': '.pdf',
-    'application/msword': '.doc',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-    'application/vnd.ms-excel': '.xls',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
-    'text/plain': '.txt',
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "application/pdf": ".pdf",
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+      ".docx",
+    "application/vnd.ms-excel": ".xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+      ".xlsx",
+    "text/plain": ".txt",
   };
-  
-  return mimeToExtension[mimeType] || '.bin';
+
+  return mimeToExtension[mimeType] || ".bin";
 }
 
 /**
@@ -100,13 +105,13 @@ async function extractTextFromFile(filepath, mimeType) {
     console.log(`🔍 Extracting text from file: ${filepath}`);
     console.log(`🔍 MIME Type: ${mimeType}`);
 
-    if (mimeType.startsWith('image/')) {
+    if (mimeType.startsWith("image/")) {
       return await extractTextFromImage(filepath);
-    } else if (mimeType === 'application/pdf') {
+    } else if (mimeType === "application/pdf") {
       return await extractTextFromPDF(filepath);
-    } else if (mimeType.startsWith('text/')) {
+    } else if (mimeType.startsWith("text/")) {
       return await extractTextFromTextFile(filepath);
-    } else if (mimeType.includes('word') || mimeType.includes('document')) {
+    } else if (mimeType.includes("word") || mimeType.includes("document")) {
       return await extractTextFromTextFile(filepath); // Try as text file
     } else {
       console.log(`⚠️ Unsupported file type: ${mimeType}`);
@@ -136,7 +141,7 @@ Probeer het bestand opnieuw te sturen of neem contact op met support.`;
  */
 async function extractTextFromImage(filepath) {
   console.log(`🖼️ Extracting text from image: ${filepath}`);
-  
+
   // For now, return simulated text for Albert Heijn receipt
   // In production, you would use a real OCR service like Tesseract, Google Vision, or Azure Computer Vision
   const simulatedText = `ALBERT HEIJN
@@ -153,7 +158,7 @@ AIRMILES NR.: xx6254
 1 DZH HV MELK: 1,99
 1 DZH YOGHURT: 2,29
 1 HONING: 2,25
-3 BAPAO: 0,99
+3 BAPAO: 0,99 2,97
 1 DZH CREME FR: 1,09
 1 ZAANSE HOEVE: 2,69 25%
 1 BOTERH WORST: 1,49
@@ -222,15 +227,17 @@ Vragen over je kassabon? Onze collega's helpen je graag`;
  */
 async function extractTextFromPDF(filepath) {
   console.log(`📄 Extracting text from PDF: ${filepath}`);
-  
+
   // Method 1: Try pdf-parse library
   try {
-    const pdfParse = require('pdf-parse');
+    const pdfParse = require("pdf-parse");
     const dataBuffer = fs.readFileSync(filepath);
     const data = await pdfParse(dataBuffer);
-    
+
     if (data.text && data.text.trim().length > 10) {
-      console.log(`✅ Extracted ${data.text.length} characters from PDF using pdf-parse`);
+      console.log(
+        `✅ Extracted ${data.text.length} characters from PDF using pdf-parse`
+      );
       return data.text;
     }
   } catch (error) {
@@ -241,7 +248,9 @@ async function extractTextFromPDF(filepath) {
   try {
     const text = await extractTextFromPDFFallback(filepath);
     if (text && text.trim().length > 10) {
-      console.log(`✅ Extracted ${text.length} characters from PDF using pdftotext`);
+      console.log(
+        `✅ Extracted ${text.length} characters from PDF using pdftotext`
+      );
       return text;
     }
   } catch (error) {
@@ -250,7 +259,7 @@ async function extractTextFromPDF(filepath) {
 
   // Method 3: Try to read as text file (in case it's a text-based PDF)
   try {
-    const content = fs.readFileSync(filepath, 'utf8');
+    const content = fs.readFileSync(filepath, "utf8");
     if (content && content.trim().length > 10) {
       console.log(`✅ Extracted ${content.length} characters from PDF as text`);
       return content;
@@ -282,23 +291,23 @@ Voor nu wordt er een standaard bonnetje gebruikt voor verwerking.`;
  */
 async function extractTextFromPDFFallback(filepath) {
   console.log(`🔄 Using fallback PDF text extraction for: ${filepath}`);
-  
+
   return new Promise((resolve, reject) => {
     // Try using pdftotext (poppler-utils) if available
-    const pdftotext = spawn('pdftotext', [filepath, '-']);
-    
-    let output = '';
-    let error = '';
-    
-    pdftotext.stdout.on('data', (data) => {
+    const pdftotext = spawn("pdftotext", [filepath, "-"]);
+
+    let output = "";
+    let error = "";
+
+    pdftotext.stdout.on("data", (data) => {
       output += data.toString();
     });
-    
-    pdftotext.stderr.on('data', (data) => {
+
+    pdftotext.stderr.on("data", (data) => {
       error += data.toString();
     });
-    
-    pdftotext.on('close', (code) => {
+
+    pdftotext.on("close", (code) => {
       if (code === 0 && output.trim()) {
         console.log(`✅ PDF text extracted using pdftotext`);
         resolve(output.trim());
@@ -310,8 +319,8 @@ This appears to be a receipt or invoice document.
 Please ensure the document is clear and readable for better processing.`);
       }
     });
-    
-    pdftotext.on('error', (err) => {
+
+    pdftotext.on("error", (err) => {
       console.log(`⚠️ pdftotext not available: ${err.message}`);
       resolve(`PDF Document - Text extraction not available
 This appears to be a receipt or invoice document.
@@ -325,9 +334,9 @@ Please ensure the document is clear and readable for better processing.`);
  */
 async function extractTextFromTextFile(filepath) {
   console.log(`📝 Extracting text from text file: ${filepath}`);
-  
+
   try {
-    const content = fs.readFileSync(filepath, 'utf8');
+    const content = fs.readFileSync(filepath, "utf8");
     console.log(`✅ Extracted ${content.length} characters from text file`);
     return content;
   } catch (error) {
@@ -362,7 +371,10 @@ function getReceiptFileInfo(invoiceNumber) {
 
     return { exists: false };
   } catch (error) {
-    console.error(`❌ Error getting file info for invoice ${invoiceNumber}:`, error.message);
+    console.error(
+      `❌ Error getting file info for invoice ${invoiceNumber}:`,
+      error.message
+    );
     return { exists: false, error: error.message };
   }
 }
@@ -372,20 +384,22 @@ function getReceiptFileInfo(invoiceNumber) {
  */
 function getMimeTypeFromExtension(extension) {
   const extensionToMime = {
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.png': 'image/png',
-    '.gif': 'image/gif',
-    '.webp': 'image/webp',
-    '.pdf': 'application/pdf',
-    '.doc': 'application/msword',
-    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.xls': 'application/vnd.ms-excel',
-    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    '.txt': 'text/plain',
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".pdf": "application/pdf",
+    ".doc": "application/msword",
+    ".docx":
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx":
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".txt": "text/plain",
   };
-  
-  return extensionToMime[extension.toLowerCase()] || 'application/octet-stream';
+
+  return extensionToMime[extension.toLowerCase()] || "application/octet-stream";
 }
 
 /**
@@ -394,22 +408,24 @@ function getMimeTypeFromExtension(extension) {
 function listReceiptFiles() {
   try {
     const files = fs.readdirSync(STORAGE_DIR);
-    return files.map(file => {
-      const filepath = path.join(STORAGE_DIR, file);
-      const stats = fs.statSync(filepath);
-      const extension = path.extname(file);
-      
-      return {
-        filename: file,
-        filepath: filepath,
-        size: stats.size,
-        created: stats.birthtime,
-        extension: extension,
-        mimeType: getMimeTypeFromExtension(extension),
-      };
-    }).sort((a, b) => b.created - a.created); // Sort by newest first
+    return files
+      .map((file) => {
+        const filepath = path.join(STORAGE_DIR, file);
+        const stats = fs.statSync(filepath);
+        const extension = path.extname(file);
+
+        return {
+          filename: file,
+          filepath: filepath,
+          size: stats.size,
+          created: stats.birthtime,
+          extension: extension,
+          mimeType: getMimeTypeFromExtension(extension),
+        };
+      })
+      .sort((a, b) => b.created - a.created); // Sort by newest first
   } catch (error) {
-    console.error('❌ Error listing receipt files:', error.message);
+    console.error("❌ Error listing receipt files:", error.message);
     return [];
   }
 }
@@ -419,7 +435,7 @@ function listReceiptFiles() {
  */
 function createReceiptFileViewer(invoiceNumber) {
   const fileInfo = getReceiptFileInfo(invoiceNumber);
-  
+
   if (!fileInfo.exists) {
     return `
       <!DOCTYPE html>
@@ -441,11 +457,11 @@ function createReceiptFileViewer(invoiceNumber) {
   }
 
   const fileUrl = `/receipt_files/${fileInfo.filename}`;
-  
-  let content = '';
-  if (fileInfo.mimeType.startsWith('image/')) {
+
+  let content = "";
+  if (fileInfo.mimeType.startsWith("image/")) {
     content = `<img src="${fileUrl}" alt="Receipt" style="max-width: 100%; height: auto;">`;
-  } else if (fileInfo.mimeType === 'application/pdf') {
+  } else if (fileInfo.mimeType === "application/pdf") {
     content = `<embed src="${fileUrl}" type="application/pdf" width="100%" height="600px">`;
   } else {
     content = `<p>File type: ${fileInfo.mimeType}</p><a href="${fileUrl}" download>Download File</a>`;
@@ -497,12 +513,13 @@ function createReceiptFileViewer(invoiceNumber) {
  */
 function createReceiptFilesList() {
   const files = listReceiptFiles();
-  
-  const fileRows = files.map(file => {
-    const invoiceNumber = file.filename.split('_')[0];
-    const fileUrl = `/receipt_files/${file.filename}`;
-    
-    return `
+
+  const fileRows = files
+    .map((file) => {
+      const invoiceNumber = file.filename.split("_")[0];
+      const fileUrl = `/receipt_files/${file.filename}`;
+
+      return `
       <tr>
         <td><a href="/receipt/${invoiceNumber}">${invoiceNumber}</a></td>
         <td>${file.filename}</td>
@@ -512,7 +529,8 @@ function createReceiptFilesList() {
         <td><a href="${fileUrl}" download>Download</a></td>
       </tr>
     `;
-  }).join('');
+    })
+    .join("");
 
   return `
     <!DOCTYPE html>
