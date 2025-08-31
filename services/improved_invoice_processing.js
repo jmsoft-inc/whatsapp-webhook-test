@@ -216,7 +216,9 @@ async function processWithAI(text, invoiceNumber) {
 
 // Enhanced fallback response with comprehensive data extraction for Dutch receipts
 function createFallbackResponse(text, invoiceNumber) {
-  console.log(`📝 Creating enhanced fallback response for invoice: ${invoiceNumber}`);
+  console.log(
+    `📝 Creating enhanced fallback response for invoice: ${invoiceNumber}`
+  );
   console.log(`📄 Input text length: ${text.length} characters`);
 
   // Extract date and time with multiple patterns
@@ -262,13 +264,13 @@ function createFallbackResponse(text, invoiceNumber) {
   let subtotalBeforeDiscount = 0;
 
   // Find all SUBTOTAAL occurrences
-  const lines = text.split('\n');
+  const lines = text.split("\n");
   let subtotalCount = 0;
   let firstSubtotal = 0;
   let secondSubtotal = 0;
 
   for (const line of lines) {
-    if (line.includes('SUBTOTAAL:')) {
+    if (line.includes("SUBTOTAAL:")) {
       subtotalCount++;
       const match = line.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/i);
       if (match) {
@@ -295,7 +297,9 @@ function createFallbackResponse(text, invoiceNumber) {
     }
   }
 
-  console.log(`💰 Subtotals: Before=${subtotalBeforeDiscount}, After=${subtotalAfterDiscount}`);
+  console.log(
+    `💰 Subtotals: Before=${subtotalBeforeDiscount}, After=${subtotalAfterDiscount}`
+  );
 
   // Extract BTW breakdown with improved patterns
   let btw9 = 0;
@@ -317,20 +321,40 @@ function createFallbackResponse(text, invoiceNumber) {
     console.log(`📊 BTW 21%: Base=${btw21Base}, Amount=${btw21}`);
   }
 
-  // Extract bonus amounts with improved patterns
+  // Extract bonus amounts with hybrid patterns - FIXED to sum all bonuses
   let bonusTotal = 0;
   const bonusPatterns = [
-    /BONUS[^:]*:\s*-(\d+[.,]\d{2})/gi,
-    /\d+%\s+K[^:]*:\s*-(\d+[.,]\d{2})/gi,
+    /BONUS[^:]*:\s*-(\d+[.,]\d{2})/gi, // Normal
+    /BONUS[^0-9]*(\d+[.,]\d{2})/gi, // Compressed
+    /\d+%\s+K[^:]*:\s*-(\d+[.,]\d{2})/gi, // Normal percentage
+    /\d+%K[^0-9]*(\d+[.,]\d{2})/gi, // Compressed percentage
   ];
+
+  // Debug: Log all bonus lines found
+  console.log("🔍 Searching for bonus lines...");
+  for (const line of lines) {
+    if (line.includes("BONUS") || line.includes("%")) {
+      console.log(`🔍 Bonus line found: "${line}"`);
+    }
+  }
 
   for (const pattern of bonusPatterns) {
     let match;
     while ((match = pattern.exec(text)) !== null) {
       const amount = parseFloat(match[1].replace(",", "."));
-      bonusTotal += amount;
-      console.log(`🎁 Bonus found: ${amount}`);
+      // Only add if it's a real bonus (not 0.00)
+      if (amount > 0) {
+        bonusTotal += amount;
+        console.log(`🎁 Bonus found: ${amount}`);
+      }
     }
+  }
+
+  // If no bonuses found with patterns, try manual calculation from voordeel
+  if (bonusTotal === 0) {
+    console.log(
+      "⚠️ No bonuses found with patterns, using voordeel as fallback"
+    );
   }
 
   // Extract voordeel
@@ -345,20 +369,24 @@ function createFallbackResponse(text, invoiceNumber) {
   let koopzegelsAmount = 0;
   let koopzegelsCount = 0;
 
-  const koopzegelsMatch = text.match(/(\d+)\s*KOOPZEGELS[^:]*:\s*(\d+[.,]\d{2})/i);
+  const koopzegelsMatch = text.match(
+    /(\d+)\s*KOOPZEGELS[^:]*:\s*(\d+[.,]\d{2})/i
+  );
   if (koopzegelsMatch) {
     koopzegelsCount = parseInt(koopzegelsMatch[1]);
     koopzegelsAmount = parseFloat(koopzegelsMatch[2].replace(",", "."));
-    console.log(`🎫 Koopzegels: Count=${koopzegelsCount}, Amount=${koopzegelsAmount}`);
+    console.log(
+      `🎫 Koopzegels: Count=${koopzegelsCount}, Amount=${koopzegelsAmount}`
+    );
   }
 
   // Extract total amount with improved logic
   let totalAmount = 0;
-  
+
   // Find the last TOTAAL that's not in the BTW section
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i];
-    if (line.includes('TOTAAL:') && !line.includes('BTW OVER EUR')) {
+    if (line.includes("TOTAAL:") && !line.includes("BTW OVER EUR")) {
       const match = line.match(/TOTAAL:\s*(\d+[.,]\d{2})/i);
       if (match && !line.match(/TOTAAL:\s*(\d+[.,]\d{2})\s+(\d+[.,]\d{2})/)) {
         totalAmount = parseFloat(match[1].replace(",", "."));
@@ -448,14 +476,24 @@ function createFallbackResponse(text, invoiceNumber) {
   // Extract individual items
   for (const line of lines) {
     // Skip non-item lines
-    if (line.includes('BONUSKAART') || line.includes('AIRMILES') || 
-        line.includes('SUBTOTAAL') || line.includes('TOTAAL') || 
-        line.includes('BONUS') || line.includes('UW VOORDEEL') || 
-        line.includes('KOOPZEGELS') || line.includes('BETAALD MET') ||
-        line.includes('BTW OVER EUR') || line.includes('POI:') ||
-        line.includes('Terminal:') || line.includes('Merchant:') ||
-        line.includes('Transactie:') || line.includes('Autorisatiecode:') ||
-        line.includes('Leesmethode:') || line.includes('Vragen over')) {
+    if (
+      line.includes("BONUSKAART") ||
+      line.includes("AIRMILES") ||
+      line.includes("SUBTOTAAL") ||
+      line.includes("TOTAAL") ||
+      line.includes("BONUS") ||
+      line.includes("UW VOORDEEL") ||
+      line.includes("KOOPZEGELS") ||
+      line.includes("BETAALD MET") ||
+      line.includes("BTW OVER EUR") ||
+      line.includes("POI:") ||
+      line.includes("Terminal:") ||
+      line.includes("Merchant:") ||
+      line.includes("Transactie:") ||
+      line.includes("Autorisatiecode:") ||
+      line.includes("Leesmethode:") ||
+      line.includes("Vragen over")
+    ) {
       continue;
     }
 
@@ -465,7 +503,7 @@ function createFallbackResponse(text, invoiceNumber) {
       const quantity = itemMatch[1];
       const name = itemMatch[2].trim();
       const price = parseFloat(itemMatch[3].replace(",", "."));
-      
+
       // Basic validation
       if (name.length > 2 && price > 0 && price < 1000) {
         items.push({
@@ -549,7 +587,8 @@ function createFallbackResponse(text, invoiceNumber) {
     items: items,
     item_count: itemCount,
     confidence: Math.min(confidence, 100),
-    notes: "Enhanced fallback response with improved patterns - AI niet beschikbaar",
+    notes:
+      "Enhanced fallback response with improved patterns - AI niet beschikbaar",
     btw_breakdown: {
       btw_9_base: btw9Base,
       btw_21_base: btw21Base,
