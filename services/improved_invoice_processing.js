@@ -205,22 +205,34 @@ async function processWithAI(text, invoiceNumber) {
   }
 }
 
-// Fallback response when AI is not available
+// Enhanced fallback response with comprehensive data extraction for Dutch receipts
 function createFallbackResponse(text, invoiceNumber) {
-  // Extract basic information from text
-  const company =
-    text.includes("ALBERT HEIJN") || text.includes("AH")
-      ? "ALBERT HEIJN"
-      : "NB";
-  const date = new Date().toISOString().split("T")[0];
+  console.log("🔍 Creating enhanced fallback response for text extraction...");
 
-  // Try to extract total amount from text with multiple patterns
+  // Extract company
+  const company = text.includes("ALBERT HEIJN") || text.includes("AH") ? "ALBERT HEIJN" : "NB";
+
+  // Extract date and time with improved patterns
+  let date = "NB";
+  let time = "NB";
+  
+  const dateMatch = text.match(/(\d{2})-(\d{2})-(\d{4})/);
+  if (dateMatch) {
+    date = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+  }
+  
+  const timeMatch = text.match(/(\d{1,2}):(\d{2})/);
+  if (timeMatch) {
+    time = `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}`;
+  }
+
+  // Extract total amount with comprehensive patterns
   let total = 0;
   const totalPatterns = [
-    /(?:TOTAAL|TOTAALBEDRAG|TOTALE|TOTAAL:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i,
-    /(?:BETALEN|TE BETALEN)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i,
-    /[€]?\s*(\d+[.,]\d{2}|\d+)\s*(?:EUR|€)/i,
-    /(\d+[.,]\d{2})\s*[€]?/i,
+    /TOTAAL:\s*(\d+[.,]\d{2})/i,
+    /TOTAAL\s*(\d+[.,]\d{2})/i,
+    /(\d+[.,]\d{2})\s*EUR/i,
+    /(\d+[.,]\d{2})\s*€/i,
   ];
 
   for (const pattern of totalPatterns) {
@@ -231,93 +243,131 @@ function createFallbackResponse(text, invoiceNumber) {
     }
   }
 
-  // Try to extract subtotal
-  let subtotal = 0;
-  const subtotalMatch = text.match(
-    /(?:SUBTOTAAL|SUBTOTAAL:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
-  );
-  if (subtotalMatch) {
-    subtotal = parseFloat(subtotalMatch[1].replace(",", "."));
+  // Extract subtotals with detailed patterns
+  let subtotalAfterDiscount = 0;
+  let subtotalBeforeDiscount = 0;
+  
+  const subtotalAfterMatch = text.match(/Subtotaal na kortingen:\s*(\d+[.,]\d{2})/i);
+  if (subtotalAfterMatch) {
+    subtotalAfterDiscount = parseFloat(subtotalAfterMatch[1].replace(",", "."));
+  }
+  
+  const subtotalBeforeMatch = text.match(/Subtotaal artikelen:\s*(\d+[.,]\d{2})/i);
+  if (subtotalBeforeMatch) {
+    subtotalBeforeDiscount = parseFloat(subtotalBeforeMatch[1].replace(",", "."));
   }
 
-  // Try to extract BTW amounts
-  let tax9 = 0;
-  let tax21 = 0;
-  const tax9Match = text.match(
-    /(?:BTW\s*9%?|9%\s*BTW)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
-  );
-  const tax21Match = text.match(
-    /(?:BTW\s*21%?|21%\s*BTW)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
-  );
-
-  if (tax9Match) tax9 = parseFloat(tax9Match[1].replace(",", "."));
-  if (tax21Match) tax21 = parseFloat(tax21Match[1].replace(",", "."));
-
-  // Try to extract bonus, emballage, voordeel, koopzegels
-  let bonus = 0;
-  let emballage = 0;
-  let voordeel = 0;
-  let koopzegels = 0;
-
-  const bonusMatch = text.match(
-    /(?:BONUS|BONUS:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
-  );
-  const emballageMatch = text.match(
-    /(?:EMBALLAGE|STATIEGELD|EMBALLAGE:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
-  );
-  const voordeelMatch = text.match(
-    /(?:VOORDEEL|KORTING|ACTIE|VOORDEEL:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
-  );
-  const koopzegelsMatch = text.match(
-    /(?:KOOPZEGELS|ZEGELS|KOOPZEGELS:)\s*[€]?\s*(\d+[.,]\d{2}|\d+)/i
-  );
-
-  if (bonusMatch) bonus = parseFloat(bonusMatch[1].replace(",", "."));
-  if (emballageMatch)
-    emballage = parseFloat(emballageMatch[1].replace(",", "."));
-  if (voordeelMatch) voordeel = parseFloat(voordeelMatch[1].replace(",", "."));
-  if (koopzegelsMatch)
-    koopzegels = parseFloat(koopzegelsMatch[1].replace(",", "."));
-
-  // Try to extract payment method
-  let paymentMethod = "NB";
-  if (text.includes("PIN") || text.includes("PINPAS")) paymentMethod = "PIN";
-  else if (text.includes("CONTANT") || text.includes("CASH"))
-    paymentMethod = "CONTANT";
-  else if (text.includes("IDEAL")) paymentMethod = "IDEAL";
-  else if (text.includes("CREDITCARD") || text.includes("CREDIT"))
-    paymentMethod = "CREDITCARD";
-
-  // Try to extract time
-  let time = "NB";
-  const timeMatch = text.match(/(\d{1,2}):(\d{2})/);
-  if (timeMatch) {
-    time = `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}`;
+  // Extract BTW breakdown with detailed patterns
+  let btw9 = 0;
+  let btw21 = 0;
+  let btw9Base = 0;
+  let btw21Base = 0;
+  
+  const btwMatch = text.match(/BTW OVER EUR\s*9%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i);
+  if (btwMatch) {
+    btw9Base = parseFloat(btwMatch[1].replace(",", "."));
+    btw9 = parseFloat(btwMatch[2].replace(",", "."));
   }
 
-  // Try to extract kassa and transactie numbers
+  // Extract bonus amounts with detailed patterns
+  let bonusTotal = 0;
+  const bonusPatterns = [
+    /BONUS BIO PREMIUM:\s*-(\d+[.,]\d{2})/i,
+    /BONUS LAYSSENS, OVE:\s*-(\d+[.,]\d{2})/i,
+  ];
+  
+  for (const pattern of bonusPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      bonusTotal += parseFloat(match[1].replace(",", "."));
+    }
+  }
+
+  // Extract emballage with detailed patterns
+  let emballageTotal = 0;
+  const emballageMatches = text.matchAll(/EMBALLAGE:\s*(\d+[.,]\d{2})/gi);
+  for (const match of emballageMatches) {
+    emballageTotal += parseFloat(match[1].replace(",", "."));
+  }
+
+  // Extract voordeel
+  let voordeelTotal = 0;
+  const voordeelMatch = text.match(/JOUW VOORDEEL:\s*(\d+[.,]\d{2})/i);
+  if (voordeelMatch) {
+    voordeelTotal = parseFloat(voordeelMatch[1].replace(",", "."));
+  }
+
+  // Extract koopzegels with count
+  let koopzegelsAmount = 0;
+  let koopzegelsCount = 0;
+  const koopzegelsMatch = text.match(/(\d+)\s*KOOPZEGELS PREMIUM:\s*(\d+[.,]\d{2})/i);
+  if (koopzegelsMatch) {
+    koopzegelsCount = parseInt(koopzegelsMatch[1]);
+    koopzegelsAmount = parseFloat(koopzegelsMatch[2].replace(",", "."));
+  }
+
+  // Extract payment details
+  let paymentPin = 0;
+  const pinMatch = text.match(/PINNEN:\s*(\d+[.,]\d{2})/i);
+  if (pinMatch) {
+    paymentPin = parseFloat(pinMatch[1].replace(",", "."));
+  }
+
+  // Extract store information
+  let filiaal = "NB";
+  let adres = "NB";
+  let telefoon = "NB";
   let kassa = "NB";
   let transactie = "NB";
-  const kassaMatch = text.match(/(?:KASSA|KAS)\s*(\d+)/i);
-  const transactieMatch = text.match(/(?:TRANSACTIE|TRANS|TXN)\s*(\d+)/i);
+  let terminal = "NB";
+  let merchant = "NB";
+  let poi = "NB";
 
-  if (kassaMatch) kassa = kassaMatch[1];
+  const filiaalMatch = text.match(/FILIAAL\s*(\d+)/i);
+  if (filiaalMatch) filiaal = filiaalMatch[1];
+
+  const adresMatch = text.match(/FILIAAL\s*\d+\s*([^\n]+)/i);
+  if (adresMatch) adres = adresMatch[1].trim();
+
+  const telefoonMatch = text.match(/(\d{3}-\d{7})/);
+  if (telefoonMatch) telefoon = telefoonMatch[1];
+
+  const transactieMatch = text.match(/Transactie:\s*(\d+)/i);
   if (transactieMatch) transactie = transactieMatch[1];
 
-  // Try to extract individual items with improved patterns for Albert Heijn format
+  const terminalMatch = text.match(/Terminal:\s*(\w+)/i);
+  if (terminalMatch) terminal = terminalMatch[1];
+
+  const merchantMatch = text.match(/Merchant:\s*(\d+)/i);
+  if (merchantMatch) merchant = merchantMatch[1];
+
+  const poiMatch = text.match(/POI:\s*(\d+)/i);
+  if (poiMatch) poi = poiMatch[1];
+
+  // Extract loyalty information
+  let bonuskaart = "NB";
+  let airMiles = "NB";
+
+  const bonuskaartMatch = text.match(/AH BONUS NR\.\s*(\w+)/i);
+  if (bonuskaartMatch) bonuskaart = bonuskaartMatch[1];
+
+  const airMilesMatch = text.match(/AIRMILES NR\.\s*\*\s*(\w+)/i);
+  if (airMilesMatch) airMiles = airMilesMatch[1];
+
+  // Extract individual items with comprehensive patterns
   const items = [];
   const itemPatterns = [
-    /(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "1 AH MIENESTJE: 1.19"
-    /([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "AH MIENESTJE: 1.19"
+    /(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})/gi,  // Format: "1 AH MIENESTJE: 1.19"
+    /([A-Z\s]+):\s*(\d+[.,]\d{2})/gi,           // Format: "AH MIENESTJE: 1.19"
   ];
 
   let itemCount = 0;
   let itemMatch;
-
+  
   for (const pattern of itemPatterns) {
     while ((itemMatch = pattern.exec(text)) !== null && itemCount < 20) {
       let itemName, itemPrice, quantity;
-
+      
       if (itemMatch[1] && itemMatch[2] && itemMatch[3]) {
         // Format: "1 AH MIENESTJE: 1.19"
         quantity = itemMatch[1];
@@ -329,17 +379,10 @@ function createFallbackResponse(text, invoiceNumber) {
         itemName = itemMatch[1].trim();
         itemPrice = parseFloat(itemMatch[2].replace(",", "."));
       }
-
-      if (
-        itemName &&
-        itemName.length > 2 &&
-        itemPrice > 0 &&
-        itemPrice < 1000
-      ) {
-        // Check if item has bonus (marked with B in the receipt)
-        const hasBonus =
-          text.includes(`${itemName} B`) || itemName.includes("B");
-
+      
+      if (itemName && itemName.length > 2 && itemPrice > 0 && itemPrice < 1000) {
+        const hasBonus = text.includes(`${itemName} B`) || itemName.includes("B");
+        
         items.push({
           name: itemName,
           quantity: quantity,
@@ -354,17 +397,16 @@ function createFallbackResponse(text, invoiceNumber) {
     }
   }
 
-  // If no items found, create a generic one
-  if (items.length === 0) {
-    items.push({
-      name: "Producten",
-      quantity: "1",
-      unit_price: total,
-      total_price: total,
-      category: "voeding",
-      bonus: "NB",
-    });
-  }
+  // Payment method detection
+  let paymentMethod = "PIN";
+  if (text.includes("PINNEN")) paymentMethod = "PIN";
+  else if (text.includes("CONTANT")) paymentMethod = "CONTANT";
+  else if (text.includes("IDEAL")) paymentMethod = "IDEAL";
+
+  console.log(`✅ Extracted ${items.length} items from receipt`);
+  console.log(`✅ Total amount: ${total}`);
+  console.log(`✅ Subtotal after discount: ${subtotalAfterDiscount}`);
+  console.log(`✅ Subtotal before discount: ${subtotalBeforeDiscount}`);
 
   return {
     invoice_number: invoiceNumber,
@@ -372,42 +414,42 @@ function createFallbackResponse(text, invoiceNumber) {
     date: date,
     time: time,
     total_amount: total,
-    subtotal: subtotal,
-    subtotal_before_discount: subtotal,
-    tax_9: tax9,
-    tax_21: tax21,
-    bonus_amount: bonus,
-    emballage_amount: emballage,
-    voordeel_amount: voordeel,
-    koopzegels_amount: koopzegels,
-    koopzegels_count: 0,
+    subtotal: subtotalAfterDiscount,
+    subtotal_before_discount: subtotalBeforeDiscount,
+    tax_9: btw9,
+    tax_21: btw21,
+    btw_breakdown: {
+      btw_9_base: btw9Base,
+      btw_21_base: btw21Base,
+    },
+    bonus_amount: bonusTotal,
+    emballage_amount: emballageTotal,
+    voordeel_amount: voordeelTotal,
+    koopzegels_amount: koopzegelsAmount,
+    koopzegels_count: koopzegelsCount,
     currency: "EUR",
     document_type: "receipt",
     payment_method: paymentMethod,
-    payment_pin: 0,
-    payment_emballage: 0,
+    payment_pin: paymentPin,
+    payment_emballage: emballageTotal,
     store_info: {
-      filiaal: "1427",
-      adres: "Parijsplein 19",
-      telefoon: "070-3935033",
+      filiaal: filiaal,
+      adres: adres,
+      telefoon: telefoon,
       kassa: kassa,
       transactie: transactie,
-      terminal: "NB",
-      merchant: "NB",
-      poi: "NB",
+      terminal: terminal,
+      merchant: merchant,
+      poi: poi,
     },
     loyalty: {
-      bonuskaart: "xx0802",
-      air_miles: "xx6254",
+      bonuskaart: bonuskaart,
+      air_miles: airMiles,
     },
     items: items,
     item_count: items.length,
     confidence: 70,
-    notes: "Fallback response - AI niet beschikbaar",
-    btw_breakdown: {
-      btw_9_base: 0,
-      btw_21_base: 0,
-    },
+    notes: "Enhanced fallback response - AI niet beschikbaar",
   };
 }
 
