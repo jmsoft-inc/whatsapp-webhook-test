@@ -11,14 +11,14 @@ const {
   processWithAI,
   saveDetailedInvoiceToSheets,
   setupGoogleSheetsHeaders,
-} = require("./improved_invoice_processing");
+} = require("./services/improved_invoice_processing");
 
 // Import image storage
 const {
   saveReceiptImage,
   createReceiptViewer,
   createReceiptsList,
-} = require("./image_storage");
+} = require("./services/image_storage");
 
 // Create an Express app
 const app = express();
