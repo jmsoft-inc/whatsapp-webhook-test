@@ -224,17 +224,17 @@ function createFallbackResponse(text, invoiceNumber) {
       ? "ALBERT HEIJN"
       : "NB";
 
-    // Extract date and time with improved patterns
+  // Extract date and time with improved patterns
   let date = "NB";
   let time = "NB";
-  
+
   // Try multiple date patterns
   const datePatterns = [
     /(\d{2})-(\d{2})-(\d{4})/, // 29-08-2025
     /(\d{2})\/(\d{2})\/(\d{4})/, // 22/08/2025
     /(\d{2})-(\d{1})-(\d{4})/, // 22-8-2025
   ];
-  
+
   for (const pattern of datePatterns) {
     const dateMatch = text.match(pattern);
     if (dateMatch) {
@@ -245,13 +245,13 @@ function createFallbackResponse(text, invoiceNumber) {
       break;
     }
   }
-  
+
   // Try multiple time patterns
   const timePatterns = [
     /(\d{1,2}):(\d{2})/, // 12:55
     /(\d{1,2}):(\d{2})\s*(\d{2})\/(\d{2})\/(\d{4})/, // 12:55 22/08/2025
   ];
-  
+
   for (const pattern of timePatterns) {
     const timeMatch = text.match(pattern);
     if (timeMatch) {
@@ -270,10 +270,10 @@ function createFallbackResponse(text, invoiceNumber) {
   ];
 
   // Find the last TOTAAL match (the final total)
-  const lines = text.split('\n');
+  const lines = text.split("\n");
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i];
-    if (line.includes('TOTAAL:') && !line.includes('BTW OVER EUR')) {
+    if (line.includes("TOTAAL:") && !line.includes("BTW OVER EUR")) {
       const match = line.match(/TOTAAL:\s*(\d+[.,]\d{2})/i);
       if (match && !line.match(/TOTAAL:\s*(\d+[.,]\d{2})\s+(\d+[.,]\d{2})/)) {
         total = parseFloat(match[1].replace(",", "."));
@@ -297,20 +297,20 @@ function createFallbackResponse(text, invoiceNumber) {
   let subtotalAfterDiscount = 0;
   let subtotalBeforeDiscount = 0;
 
-    // Try multiple patterns for subtotal after discount
+  // Try multiple patterns for subtotal after discount
   const subtotalAfterPatterns = [
     /Subtotaal na kortingen:\s*(\d+[.,]\d{2})/i,
     /SUBTOTAAL:\s*(\d+[.,]\d{2})/i,
   ];
-  
+
   // Find all SUBTOTAAL matches and use the second one (after discounts)
   const allSubtotalMatches = text.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/gi);
   if (allSubtotalMatches && allSubtotalMatches.length >= 2) {
     // Split text and find the second SUBTOTAAL occurrence
-    const lines = text.split('\n');
+    const lines = text.split("\n");
     let subtotalCount = 0;
     for (const line of lines) {
-      if (line.includes('SUBTOTAAL:')) {
+      if (line.includes("SUBTOTAAL:")) {
         subtotalCount++;
         if (subtotalCount === 2) {
           const match = line.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/i);
@@ -331,13 +331,13 @@ function createFallbackResponse(text, invoiceNumber) {
       }
     }
   }
-  
+
   // Try multiple patterns for subtotal before discount
   const subtotalBeforePatterns = [
     /Subtotaal artikelen:\s*(\d+[.,]\d{2})/i,
     /(\d+)\s*SUBTOTAAL:\s*(\d+[.,]\d{2})/i,
   ];
-  
+
   for (const pattern of subtotalBeforePatterns) {
     const match = text.match(pattern);
     if (match) {
@@ -357,18 +357,14 @@ function createFallbackResponse(text, invoiceNumber) {
   let btw21Base = 0;
 
   // Extract BTW 9%
-  const btw9Match = text.match(
-    /9%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i
-  );
+  const btw9Match = text.match(/9%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i);
   if (btw9Match) {
     btw9Base = parseFloat(btw9Match[1].replace(",", "."));
     btw9 = parseFloat(btw9Match[2].replace(",", "."));
   }
 
   // Extract BTW 21%
-  const btw21Match = text.match(
-    /21%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i
-  );
+  const btw21Match = text.match(/21%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i);
   if (btw21Match) {
     btw21Base = parseFloat(btw21Match[1].replace(",", "."));
     btw21 = parseFloat(btw21Match[2].replace(",", "."));
@@ -455,18 +451,18 @@ function createFallbackResponse(text, invoiceNumber) {
 
   const terminalMatch = text.match(/Terminal:\s*(\w+)/i);
   if (terminalMatch) terminal = terminalMatch[1];
-  
+
   // Extract merchant ID
   const merchantMatch = text.match(/Merchant:\s*(\d+)/i);
   if (merchantMatch) merchant = merchantMatch[1];
 
   const poiMatch = text.match(/POI:\s*(\d+)/i);
   if (poiMatch) poi = poiMatch[1];
-  
+
   // Extract kassa number
   const kassaMatch = text.match(/Kassa:\s*(\d+)/i);
   if (kassaMatch) kassa = kassaMatch[1];
-  
+
   // Extract periode
   const periodeMatch = text.match(/Periode:\s*(\d+)/i);
   if (periodeMatch) periode = periodeMatch[1];
@@ -481,7 +477,7 @@ function createFallbackResponse(text, invoiceNumber) {
   const airMilesMatch = text.match(/AIRMILES NR\.:\s*(\w+)/i);
   if (airMilesMatch) airMiles = airMilesMatch[1];
 
-    // Extract individual items with comprehensive patterns
+  // Extract individual items with comprehensive patterns
   const items = [];
   const itemPatterns = [
     /(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "1 AH MIENESTJE: 1.19"
@@ -491,11 +487,11 @@ function createFallbackResponse(text, invoiceNumber) {
 
   let itemCount = 0;
   let itemMatch;
-  
+
   for (const pattern of itemPatterns) {
     while ((itemMatch = pattern.exec(text)) !== null && itemCount < 30) {
       let itemName, itemPrice, quantity;
-      
+
       if (itemMatch[1] && itemMatch[2] && itemMatch[3]) {
         // Format: "1 AH MIENESTJE: 1.19"
         quantity = itemMatch[1];
@@ -507,7 +503,7 @@ function createFallbackResponse(text, invoiceNumber) {
         itemName = itemMatch[1].trim();
         itemPrice = parseFloat(itemMatch[2].replace(",", "."));
       }
-      
+
       if (
         itemName &&
         itemName.length > 2 &&
@@ -532,21 +528,13 @@ function createFallbackResponse(text, invoiceNumber) {
       }
     }
   }
-  
-  // If no items found, try to extract item count from subtotal line
-  if (items.length === 0) {
-    const itemCountMatch = text.match(/(\d+)\s*SUBTOTAAL:/i);
-    if (itemCountMatch) {
-      itemCount = parseInt(itemCountMatch[1]);
-    }
-  } else {
-    // Use the item count from the first SUBTOTAAL line (21 SUBTOTAAL: 40,24)
-    const itemCountMatch = text.match(/(\d+)\s*SUBTOTAAL:/i);
-    if (itemCountMatch) {
-      itemCount = parseInt(itemCountMatch[1]);
-    } else {
-      itemCount = items.length;
-    }
+
+  // Always try to extract item count from the first SUBTOTAAL line (21 SUBTOTAAL: 40,24)
+  const itemCountMatch = text.match(/(\d+)\s*SUBTOTAAL:/i);
+  if (itemCountMatch) {
+    itemCount = parseInt(itemCountMatch[1]);
+  } else if (items.length > 0) {
+    itemCount = items.length;
   }
 
   // Payment method detection
@@ -858,4 +846,5 @@ module.exports = {
   processWithAI,
   saveDetailedInvoiceToSheets,
   setupGoogleSheetsHeaders,
+  createFallbackResponse,
 };
