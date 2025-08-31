@@ -62,7 +62,7 @@ async function setupGoogleSheetsTabs() {
             title: tabTitle,
             gridProperties: {
               rowCount: 1000,
-              columnCount: 20,
+              columnCount: 50,
             },
           },
         },
@@ -77,6 +77,30 @@ async function setupGoogleSheetsTabs() {
 
       console.log("✅ Created tabs:", tabsToCreate);
     }
+
+    // Expand existing tabs to have enough columns
+    console.log("🔧 Expanding existing tabs to 50 columns...");
+    const expandRequests = spreadsheet.data.sheets.map((sheet) => ({
+      updateSheetProperties: {
+        properties: {
+          sheetId: sheet.properties.sheetId,
+          gridProperties: {
+            rowCount: 1000,
+            columnCount: 50,
+          },
+        },
+        fields: "gridProperties.columnCount",
+      },
+    }));
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
+      resource: {
+        requests: expandRequests,
+      },
+    });
+
+    console.log("✅ Expanded all tabs to 50 columns");
 
     // Setup Invoices tab headers
     const invoicesHeaders = [
