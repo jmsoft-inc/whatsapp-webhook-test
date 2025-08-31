@@ -246,47 +246,76 @@ function createFallbackResponse(text, invoiceNumber) {
     }
   }
 
-  // Extract subtotals with detailed patterns
+    // Extract subtotals with detailed patterns
   let subtotalAfterDiscount = 0;
   let subtotalBeforeDiscount = 0;
-
-  const subtotalAfterMatch = text.match(
-    /Subtotaal na kortingen:\s*(\d+[.,]\d{2})/i
-  );
-  if (subtotalAfterMatch) {
-    subtotalAfterDiscount = parseFloat(subtotalAfterMatch[1].replace(",", "."));
+  
+  // Try multiple patterns for subtotal after discount
+  const subtotalAfterPatterns = [
+    /Subtotaal na kortingen:\s*(\d+[.,]\d{2})/i,
+    /SUBTOTAAL:\s*(\d+[.,]\d{2})/i,
+  ];
+  
+  for (const pattern of subtotalAfterPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      subtotalAfterDiscount = parseFloat(match[1].replace(",", "."));
+      break;
+    }
+  }
+  
+  // Try multiple patterns for subtotal before discount
+  const subtotalBeforePatterns = [
+    /Subtotaal artikelen:\s*(\d+[.,]\d{2})/i,
+    /(\d+)\s*SUBTOTAAL:\s*(\d+[.,]\d{2})/i,
+  ];
+  
+  for (const pattern of subtotalBeforePatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      if (match[2]) {
+        subtotalBeforeDiscount = parseFloat(match[2].replace(",", "."));
+      } else {
+        subtotalBeforeDiscount = parseFloat(match[1].replace(",", "."));
+      }
+      break;
+    }
   }
 
-  const subtotalBeforeMatch = text.match(
-    /Subtotaal artikelen:\s*(\d+[.,]\d{2})/i
-  );
-  if (subtotalBeforeMatch) {
-    subtotalBeforeDiscount = parseFloat(
-      subtotalBeforeMatch[1].replace(",", ".")
-    );
-  }
-
-  // Extract BTW breakdown with detailed patterns
+    // Extract BTW breakdown with detailed patterns
   let btw9 = 0;
   let btw21 = 0;
   let btw9Base = 0;
   let btw21Base = 0;
-
-  const btwMatch = text.match(
+  
+  // Extract BTW 9%
+  const btw9Match = text.match(
     /BTW OVER EUR\s*9%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i
   );
-  if (btwMatch) {
-    btw9Base = parseFloat(btwMatch[1].replace(",", "."));
-    btw9 = parseFloat(btwMatch[2].replace(",", "."));
+  if (btw9Match) {
+    btw9Base = parseFloat(btw9Match[1].replace(",", "."));
+    btw9 = parseFloat(btw9Match[2].replace(",", "."));
+  }
+  
+  // Extract BTW 21%
+  const btw21Match = text.match(
+    /BTW OVER EUR\s*21%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i
+  );
+  if (btw21Match) {
+    btw21Base = parseFloat(btw21Match[1].replace(",", "."));
+    btw21 = parseFloat(btw21Match[2].replace(",", "."));
   }
 
-  // Extract bonus amounts with detailed patterns
+    // Extract bonus amounts with detailed patterns
   let bonusTotal = 0;
   const bonusPatterns = [
     /BONUS BIO PREMIUM:\s*-(\d+[.,]\d{2})/i,
     /BONUS LAYSSENS, OVE:\s*-(\d+[.,]\d{2})/i,
+    /BONUS AHROOMBOTERA:\s*-(\d+[.,]\d{2})/i,
+    /BONUS AHSALADES175:\s*-(\d+[.,]\d{2})/i,
+    /25% K ZAANSE HOEVE:\s*-(\d+[.,]\d{2})/i,
   ];
-
+  
   for (const pattern of bonusPatterns) {
     const match = text.match(pattern);
     if (match) {
@@ -303,9 +332,17 @@ function createFallbackResponse(text, invoiceNumber) {
 
   // Extract voordeel
   let voordeelTotal = 0;
-  const voordeelMatch = text.match(/JOUW VOORDEEL:\s*(\d+[.,]\d{2})/i);
-  if (voordeelMatch) {
-    voordeelTotal = parseFloat(voordeelMatch[1].replace(",", "."));
+  const voordeelPatterns = [
+    /JOUW VOORDEEL:\s*(\d+[.,]\d{2})/i,
+    /UW VOORDEEL:\s*(\d+[.,]\d{2})/i,
+  ];
+  
+  for (const pattern of voordeelPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      voordeelTotal = parseFloat(match[1].replace(",", "."));
+      break;
+    }
   }
 
   // Extract koopzegels with count
@@ -371,6 +408,7 @@ function createFallbackResponse(text, invoiceNumber) {
   const items = [];
   const itemPatterns = [
     /(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "1 AH MIENESTJE: 1.19"
+    /(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "1 BOODSCH TAS: 1,59"
     /([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "AH MIENESTJE: 1.19"
   ];
 
