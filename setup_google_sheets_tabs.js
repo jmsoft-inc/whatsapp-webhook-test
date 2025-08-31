@@ -330,7 +330,7 @@ async function setupGoogleSheetsTabs() {
 
     console.log("✅ Auto-resized columns");
 
-    console.log("🎉 Google Sheets tabs setup completed successfully!");
+    console.log("🎉 Google Sheets tabs setup completed successfully! ✅");
     console.log("📊 Available tabs:");
     console.log("   • Invoices - Overzicht van alle facturen");
     console.log("   • Detail Invoices - Gedetailleerde productinformatie");
