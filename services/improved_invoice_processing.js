@@ -604,34 +604,56 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
     // Save koopzegels tracking data if koopzegels are present
     if (invoiceData.koopzegels_amount > 0 && invoiceData.koopzegels_count > 0) {
       console.log("📊 Saving koopzegels tracking data...");
-      
+
       // Calculate koopzegels per euro
-      const koopzegelsPerEuro = (invoiceData.koopzegels_count / invoiceData.total_amount).toFixed(4);
-      
-      // Get existing koopzegels data to calculate cumulative totals
-      try {
-        const existingData = await sheets.spreadsheets.values.get({
-          spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-          range: "Koopzegels Tracking!A:L",
-        });
-        
-        let cumulativeKoopzegelsCount = invoiceData.koopzegels_count;
-        let cumulativeKoopzegelsAmount = invoiceData.koopzegels_amount;
-        let totalSpent = invoiceData.total_amount;
-        
-        // Calculate cumulative totals from existing data
-        if (existingData.data.values && existingData.data.values.length > 1) {
-          const lastRow = existingData.data.values[existingData.data.values.length - 1];
-          if (lastRow && lastRow.length >= 9) {
-            cumulativeKoopzegelsCount = parseFloat(lastRow[8]) + invoiceData.koopzegels_count;
-            cumulativeKoopzegelsAmount = parseFloat(lastRow[9]) + invoiceData.koopzegels_amount;
-            totalSpent = parseFloat(lastRow[10]) + invoiceData.total_amount;
+      const koopzegelsPerEuro = (
+        invoiceData.koopzegels_count / invoiceData.total_amount
+      ).toFixed(4);
+
+              // Get existing koopzegels data to calculate cumulative totals
+        try {
+          const existingData = await sheets.spreadsheets.values.get({
+            spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
+            range: "Koopzegels Tracking!A:L",
+          });
+
+          let cumulativeKoopzegelsCount = invoiceData.koopzegels_count;
+          let cumulativeKoopzegelsAmount = invoiceData.koopzegels_amount;
+          let totalSpent = invoiceData.total_amount;
+
+          // Calculate cumulative totals from existing data
+          if (existingData.data.values && existingData.data.values.length > 1) {
+            const lastRow =
+              existingData.data.values[existingData.data.values.length - 1];
+            if (lastRow && lastRow.length >= 9) {
+              cumulativeKoopzegelsCount =
+                parseFloat(lastRow[8]) + invoiceData.koopzegels_count;
+              cumulativeKoopzegelsAmount =
+                parseFloat(lastRow[9]) + invoiceData.koopzegels_amount;
+              totalSpent = parseFloat(lastRow[10]) + invoiceData.total_amount;
+            }
           }
-        }
-        
-        // Calculate average koopzegels per euro
-        const averageKoopzegelsPerEuro = (cumulativeKoopzegelsCount / totalSpent).toFixed(4);
-        
+
+          // Calculate average koopzegels per euro over ALL existing rows
+          let totalKoopzegelsFromAllRows = invoiceData.koopzegels_count;
+          let totalSpentFromAllRows = invoiceData.total_amount;
+          
+          // Sum up all koopzegels and amounts from existing data (skip header row)
+          if (existingData.data.values && existingData.data.values.length > 1) {
+            for (let i = 1; i < existingData.data.values.length; i++) {
+              const row = existingData.data.values[i];
+              if (row && row.length >= 6) {
+                totalKoopzegelsFromAllRows += parseFloat(row[5]) || 0; // Koopzegels Aantal
+                totalSpentFromAllRows += parseFloat(row[4]) || 0; // Totaalbedrag Factuur
+              }
+            }
+          }
+          
+          // Calculate true average over all transactions
+          const averageKoopzegelsPerEuro = (
+            totalKoopzegelsFromAllRows / totalSpentFromAllRows
+          ).toFixed(4);
+
         const koopzegelsRow = [
           new Date().toISOString(), // Timestamp
           invoiceData.invoice_number || "INV-UNKNOWN",
@@ -657,9 +679,19 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
           },
         });
 
-        console.log(`✅ Successfully saved koopzegels tracking data`);
-        console.log(`📊 Cumulative koopzegels: ${cumulativeKoopzegelsCount} (€${cumulativeKoopzegelsAmount})`);
-        console.log(`📊 Average koopzegels per euro: ${averageKoopzegelsPerEuro}`);
+                  console.log(`✅ Successfully saved koopzegels tracking data`);
+          console.log(
+            `📊 Cumulative koopzegels: ${cumulativeKoopzegelsCount} (€${cumulativeKoopzegelsAmount})`
+          );
+          console.log(
+            `📊 Total koopzegels from all rows: ${totalKoopzegelsFromAllRows}`
+          );
+          console.log(
+            `📊 Total spent from all rows: €${totalSpentFromAllRows}`
+          );
+          console.log(
+            `📊 Average koopzegels per euro (over all transactions): ${averageKoopzegelsPerEuro}`
+          );
       } catch (error) {
         console.error("❌ Error saving koopzegels tracking data:", error);
       }
