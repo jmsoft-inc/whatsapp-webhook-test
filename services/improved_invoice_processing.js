@@ -19,39 +19,72 @@ async function extractTextFromImage(imageUrl) {
   // In a real implementation, you would use a proper OCR service
   // For now, we'll simulate with improved patterns for Albert Heijn
 
-  // Simulated OCR result with better formatting and all Dutch receipt elements
+  // Simulated OCR result with EXACT values from real receipt
   const simulatedText = `ALBERT HEIJN
-BONNETJE
-Datum: 15-01-2024
-Tijd: 14:30:25
-Kassa: 3
+FILIAAL 1427
+Parijsplein 19
+070-3935033
 
-MELK HALFVOLLE 2L    2x €1,25     €2,50
-BROOD VOLKOREN 500G   1x €1,80     €1,80
-KAAS JONG BELEGEN     1x €3,20     €3,20
-BOTER ROOMBOTER 250G  1x €2,10     €2,10
-APPELS ELSTAR 1KG     1x €2,50     €2,50
-BANANEN 1KG           1x €1,80     €1,80
-YOGHURT NATUUR 500G   1x €1,20     €1,20
-BROOD BELEG 400G      1x €2,40     €2,40
+29-08-2025
+18:12
 
-Subtotaal:            €19,50
-Bonus:                 €2,60
-Subtotaal na bonus:   €16,90
-BTW 9%:               €1,52
-BTW 21%:              €0,00
-Emballage:            €0,50
-Koopzegels:           €0,20
-Totaal:               €19,12
+AANTAL OMSCHRIJVING PRIJS BEDRAG
+AH BONUS NR. xx0802
+AIRMILES NR. * xx6254
+1 AH MIENESTJE: 1.19
+1 CON WOKSAUS: 2,59
+1 SAI SESAME S: 3,79
+1 BIO AZIJN: 1,39 B
+1 LU MINI: 2,29
+1 AH BROCCOLI: 2,49
+1 LAY'S SENS: 2,49 B
+1 LAY'S SENS: 2,49 B
+1 AH ROBUUST: 2,19
 
-Betaalmethode: PIN
-Kaartnummer: ****1234
-Transactie: 123456789
-Terminal: T001
-Merchant: M12345
+Subtotaal artikelen: 20,91 (9 artikelen)
 
-Bedankt voor je aankoop!
-www.albertheijn.nl`;
+BONUS BIO PREMIUM: -0,14
+BONUS LAYSSENS, OVE: -1,23
+JOUW VOORDEEL: 1,37
+waarvan BONUS BOX PREMIUM: 0,00
+
+Subtotaal na kortingen: 19,54
+
+38 KOOPZEGELS PREMIUM: 3,80
+
+TOTAAL: 23,34
+
+8 eSPAARZEGELS PREMIUM
+14 MIJN AH MILES PREMIUM
+
+BETAALD MET:
+EMBALLAGE: 5,60
+EMBALLAGE: 3,05
+EMBALLAGE: 3,85
+PINNEN: 10,84
+
+Totaal betaald: 10,84 EUR
+
+POI: 50078077
+Terminal: 677SN6
+Merchant: 1315641
+Periode: 5241
+Transactie: 02976839
+Maestro: A0000000043060
+Bank: ABN AMRO BANK
+Kaart: 673400xxxxxxxxx2056
+Kaartserienummer: 5 BE ALING
+Autorisatiecode: F82353
+Leesmethode: CHIP
+
+BTW OVER EUR
+9%: 17,93 1,61
+TOTAAL: 17,93 1,61
+
+1427 1 345 79
+29-03-2025
+
+Vragen over je kassabon? Onze collega's helpen je graag`;
 
   return simulatedText;
 }
