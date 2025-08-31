@@ -914,7 +914,7 @@ Vragen over je kassabon? Onze collega's helpen je graag`;
     console.log('📝 Testing createFallbackResponse function...');
     const result = createFallbackResponse(testText, 'TEST001');
     
-    // Define expected values based on ChatGPT-5 analysis
+    // Define expected values based on simplified extraction
     const expected = {
       date: "2025-08-22",
       time: "12:55",
