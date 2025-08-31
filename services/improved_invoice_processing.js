@@ -210,17 +210,20 @@ function createFallbackResponse(text, invoiceNumber) {
   console.log("🔍 Creating enhanced fallback response for text extraction...");
 
   // Extract company
-  const company = text.includes("ALBERT HEIJN") || text.includes("AH") ? "ALBERT HEIJN" : "NB";
+  const company =
+    text.includes("ALBERT HEIJN") || text.includes("AH")
+      ? "ALBERT HEIJN"
+      : "NB";
 
   // Extract date and time with improved patterns
   let date = "NB";
   let time = "NB";
-  
+
   const dateMatch = text.match(/(\d{2})-(\d{2})-(\d{4})/);
   if (dateMatch) {
     date = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
   }
-  
+
   const timeMatch = text.match(/(\d{1,2}):(\d{2})/);
   if (timeMatch) {
     time = `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}`;
@@ -246,15 +249,21 @@ function createFallbackResponse(text, invoiceNumber) {
   // Extract subtotals with detailed patterns
   let subtotalAfterDiscount = 0;
   let subtotalBeforeDiscount = 0;
-  
-  const subtotalAfterMatch = text.match(/Subtotaal na kortingen:\s*(\d+[.,]\d{2})/i);
+
+  const subtotalAfterMatch = text.match(
+    /Subtotaal na kortingen:\s*(\d+[.,]\d{2})/i
+  );
   if (subtotalAfterMatch) {
     subtotalAfterDiscount = parseFloat(subtotalAfterMatch[1].replace(",", "."));
   }
-  
-  const subtotalBeforeMatch = text.match(/Subtotaal artikelen:\s*(\d+[.,]\d{2})/i);
+
+  const subtotalBeforeMatch = text.match(
+    /Subtotaal artikelen:\s*(\d+[.,]\d{2})/i
+  );
   if (subtotalBeforeMatch) {
-    subtotalBeforeDiscount = parseFloat(subtotalBeforeMatch[1].replace(",", "."));
+    subtotalBeforeDiscount = parseFloat(
+      subtotalBeforeMatch[1].replace(",", ".")
+    );
   }
 
   // Extract BTW breakdown with detailed patterns
@@ -262,8 +271,10 @@ function createFallbackResponse(text, invoiceNumber) {
   let btw21 = 0;
   let btw9Base = 0;
   let btw21Base = 0;
-  
-  const btwMatch = text.match(/BTW OVER EUR\s*9%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i);
+
+  const btwMatch = text.match(
+    /BTW OVER EUR\s*9%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i
+  );
   if (btwMatch) {
     btw9Base = parseFloat(btwMatch[1].replace(",", "."));
     btw9 = parseFloat(btwMatch[2].replace(",", "."));
@@ -275,7 +286,7 @@ function createFallbackResponse(text, invoiceNumber) {
     /BONUS BIO PREMIUM:\s*-(\d+[.,]\d{2})/i,
     /BONUS LAYSSENS, OVE:\s*-(\d+[.,]\d{2})/i,
   ];
-  
+
   for (const pattern of bonusPatterns) {
     const match = text.match(pattern);
     if (match) {
@@ -300,7 +311,9 @@ function createFallbackResponse(text, invoiceNumber) {
   // Extract koopzegels with count
   let koopzegelsAmount = 0;
   let koopzegelsCount = 0;
-  const koopzegelsMatch = text.match(/(\d+)\s*KOOPZEGELS PREMIUM:\s*(\d+[.,]\d{2})/i);
+  const koopzegelsMatch = text.match(
+    /(\d+)\s*KOOPZEGELS PREMIUM:\s*(\d+[.,]\d{2})/i
+  );
   if (koopzegelsMatch) {
     koopzegelsCount = parseInt(koopzegelsMatch[1]);
     koopzegelsAmount = parseFloat(koopzegelsMatch[2].replace(",", "."));
@@ -357,17 +370,17 @@ function createFallbackResponse(text, invoiceNumber) {
   // Extract individual items with comprehensive patterns
   const items = [];
   const itemPatterns = [
-    /(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})/gi,  // Format: "1 AH MIENESTJE: 1.19"
-    /([A-Z\s]+):\s*(\d+[.,]\d{2})/gi,           // Format: "AH MIENESTJE: 1.19"
+    /(\d+)\s+([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "1 AH MIENESTJE: 1.19"
+    /([A-Z\s]+):\s*(\d+[.,]\d{2})/gi, // Format: "AH MIENESTJE: 1.19"
   ];
 
   let itemCount = 0;
   let itemMatch;
-  
+
   for (const pattern of itemPatterns) {
     while ((itemMatch = pattern.exec(text)) !== null && itemCount < 20) {
       let itemName, itemPrice, quantity;
-      
+
       if (itemMatch[1] && itemMatch[2] && itemMatch[3]) {
         // Format: "1 AH MIENESTJE: 1.19"
         quantity = itemMatch[1];
@@ -379,10 +392,16 @@ function createFallbackResponse(text, invoiceNumber) {
         itemName = itemMatch[1].trim();
         itemPrice = parseFloat(itemMatch[2].replace(",", "."));
       }
-      
-      if (itemName && itemName.length > 2 && itemPrice > 0 && itemPrice < 1000) {
-        const hasBonus = text.includes(`${itemName} B`) || itemName.includes("B");
-        
+
+      if (
+        itemName &&
+        itemName.length > 2 &&
+        itemPrice > 0 &&
+        itemPrice < 1000
+      ) {
+        const hasBonus =
+          text.includes(`${itemName} B`) || itemName.includes("B");
+
         items.push({
           name: itemName,
           quantity: quantity,
@@ -580,6 +599,72 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
       console.log(`✅ Successfully saved ${detailRows.length} detail rows`);
     } else {
       console.log("⚠️  No items found to save to Detail Invoices tab");
+    }
+
+    // Save koopzegels tracking data if koopzegels are present
+    if (invoiceData.koopzegels_amount > 0 && invoiceData.koopzegels_count > 0) {
+      console.log("📊 Saving koopzegels tracking data...");
+      
+      // Calculate koopzegels per euro
+      const koopzegelsPerEuro = (invoiceData.koopzegels_count / invoiceData.total_amount).toFixed(4);
+      
+      // Get existing koopzegels data to calculate cumulative totals
+      try {
+        const existingData = await sheets.spreadsheets.values.get({
+          spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
+          range: "Koopzegels Tracking!A:L",
+        });
+        
+        let cumulativeKoopzegelsCount = invoiceData.koopzegels_count;
+        let cumulativeKoopzegelsAmount = invoiceData.koopzegels_amount;
+        let totalSpent = invoiceData.total_amount;
+        
+        // Calculate cumulative totals from existing data
+        if (existingData.data.values && existingData.data.values.length > 1) {
+          const lastRow = existingData.data.values[existingData.data.values.length - 1];
+          if (lastRow && lastRow.length >= 9) {
+            cumulativeKoopzegelsCount = parseFloat(lastRow[8]) + invoiceData.koopzegels_count;
+            cumulativeKoopzegelsAmount = parseFloat(lastRow[9]) + invoiceData.koopzegels_amount;
+            totalSpent = parseFloat(lastRow[10]) + invoiceData.total_amount;
+          }
+        }
+        
+        // Calculate average koopzegels per euro
+        const averageKoopzegelsPerEuro = (cumulativeKoopzegelsCount / totalSpent).toFixed(4);
+        
+        const koopzegelsRow = [
+          new Date().toISOString(), // Timestamp
+          invoiceData.invoice_number || "INV-UNKNOWN",
+          invoiceData.date || new Date().toISOString().split("T")[0],
+          invoiceData.company || "NB",
+          invoiceData.total_amount || "0", // Totaalbedrag Factuur
+          invoiceData.koopzegels_count || "0", // Koopzegels Aantal
+          invoiceData.koopzegels_amount || "0", // Koopzegels Bedrag
+          koopzegelsPerEuro, // Koopzegels per Euro
+          cumulativeKoopzegelsCount, // Cumulatief Koopzegels Aantal
+          cumulativeKoopzegelsAmount, // Cumulatief Koopzegels Bedrag
+          averageKoopzegelsPerEuro, // Gemiddelde Koopzegels per Euro
+          `Factuur: ${invoiceData.invoice_number}`, // Opmerkingen
+        ];
+
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
+          range: "Koopzegels Tracking!A:L",
+          valueInputOption: "RAW",
+          insertDataOption: "INSERT_ROWS",
+          resource: {
+            values: [koopzegelsRow],
+          },
+        });
+
+        console.log(`✅ Successfully saved koopzegels tracking data`);
+        console.log(`📊 Cumulative koopzegels: ${cumulativeKoopzegelsCount} (€${cumulativeKoopzegelsAmount})`);
+        console.log(`📊 Average koopzegels per euro: ${averageKoopzegelsPerEuro}`);
+      } catch (error) {
+        console.error("❌ Error saving koopzegels tracking data:", error);
+      }
+    } else {
+      console.log("ℹ️  No koopzegels found, skipping koopzegels tracking");
     }
 
     console.log("✅ Successfully saved detailed invoice to Google Sheets");

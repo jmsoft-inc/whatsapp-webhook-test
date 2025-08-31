@@ -47,7 +47,7 @@ async function setupGoogleSheetsTabs() {
 
     // Check if tabs exist, if not create them
     const existingTabs = spreadsheet.data.sheets.map((s) => s.properties.title);
-    const requiredTabs = ["Invoices", "Detail Invoices"];
+    const requiredTabs = ["Invoices", "Detail Invoices", "Koopzegels Tracking"];
     const tabsToCreate = requiredTabs.filter(
       (tab) => !existingTabs.includes(tab)
     );
@@ -168,12 +168,20 @@ async function setupGoogleSheetsTabs() {
       "Betaalmethode",
       "Kassa",
       "Transactie",
+      "Terminal ID",
+      "Merchant ID",
+      "POI",
+      "Filiaal",
+      "Adres",
+      "Telefoon",
+      "Bonuskaart",
+      "Air Miles",
       "Opmerkingen",
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-      range: "Detail Invoices!A1:P1",
+      range: `Detail Invoices!A1:${String.fromCharCode(65 + detailHeaders.length - 1)}1`,
       valueInputOption: "RAW",
       resource: {
         values: [detailHeaders],
@@ -182,9 +190,36 @@ async function setupGoogleSheetsTabs() {
 
     console.log("✅ Updated Detail Invoices tab headers");
 
-    // Format headers with bold and background color
+    // Setup Koopzegels Tracking tab headers
+    const koopzegelsHeaders = [
+      "Timestamp",
+      "Factuurnummer",
+      "Datum",
+      "Bedrijf",
+      "Totaalbedrag Factuur",
+      "Koopzegels Aantal",
+      "Koopzegels Bedrag",
+      "Koopzegels per Euro",
+      "Cumulatief Koopzegels Aantal",
+      "Cumulatief Koopzegels Bedrag",
+      "Gemiddelde Koopzegels per Euro",
+      "Opmerkingen",
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
+      range: `Koopzegels Tracking!A1:${String.fromCharCode(65 + koopzegelsHeaders.length - 1)}1`,
+      valueInputOption: "RAW",
+      resource: {
+        values: [koopzegelsHeaders],
+      },
+    });
+
+    console.log("✅ Updated Koopzegels Tracking tab headers");
+
+    // Format headers with bold and background color - Different colors for each tab
     const formatRequests = [
-      // Format Invoices tab headers
+      // Format Invoices tab headers (Blue)
       {
         repeatCell: {
           range: {
@@ -208,7 +243,7 @@ async function setupGoogleSheetsTabs() {
           fields: "userEnteredFormat(backgroundColor,textFormat)",
         },
       },
-      // Format Detail Invoices tab headers
+      // Format Detail Invoices tab headers (Green)
       {
         repeatCell: {
           range: {
@@ -222,7 +257,7 @@ async function setupGoogleSheetsTabs() {
           },
           cell: {
             userEnteredFormat: {
-              backgroundColor: { red: 0.2, green: 0.6, blue: 0.9 },
+              backgroundColor: { red: 0.2, green: 0.8, blue: 0.4 },
               textFormat: {
                 bold: true,
                 foregroundColor: { red: 1, green: 1, blue: 1 },
@@ -232,7 +267,31 @@ async function setupGoogleSheetsTabs() {
           fields: "userEnteredFormat(backgroundColor,textFormat)",
         },
       },
-      // Format data rows with alternating colors
+      // Format Koopzegels Tracking tab headers (Orange)
+      {
+        repeatCell: {
+          range: {
+            sheetId: spreadsheet.data.sheets.find(
+              (s) => s.properties.title === "Koopzegels Tracking"
+            )?.properties.sheetId,
+            startRowIndex: 0,
+            endRowIndex: 1,
+            startColumnIndex: 0,
+            endColumnIndex: koopzegelsHeaders.length,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 1.0, green: 0.6, blue: 0.2 },
+              textFormat: {
+                bold: true,
+                foregroundColor: { red: 1, green: 1, blue: 1 },
+              },
+            },
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat)",
+        },
+      },
+      // Format Invoices data rows with alternating colors
       {
         repeatCell: {
           range: {
@@ -242,11 +301,11 @@ async function setupGoogleSheetsTabs() {
             startRowIndex: 1,
             endRowIndex: 1000,
             startColumnIndex: 0,
-            endColumnIndex: 33,
+            endColumnIndex: 34,
           },
           cell: {
             userEnteredFormat: {
-              backgroundColor: { red: 0.98, green: 0.98, blue: 0.98 },
+              backgroundColor: { red: 0.95, green: 0.97, blue: 1.0 },
               textFormat: {
                 bold: false,
                 foregroundColor: { red: 0, green: 0, blue: 0 },
@@ -256,7 +315,7 @@ async function setupGoogleSheetsTabs() {
           fields: "userEnteredFormat(backgroundColor,textFormat)",
         },
       },
-      // Format Detail Invoices data rows
+      // Format Detail Invoices data rows with alternating colors
       {
         repeatCell: {
           range: {
@@ -270,7 +329,31 @@ async function setupGoogleSheetsTabs() {
           },
           cell: {
             userEnteredFormat: {
-              backgroundColor: { red: 0.98, green: 0.98, blue: 0.98 },
+              backgroundColor: { red: 0.95, green: 1.0, blue: 0.95 },
+              textFormat: {
+                bold: false,
+                foregroundColor: { red: 0, green: 0, blue: 0 },
+              },
+            },
+          },
+          fields: "userEnteredFormat(backgroundColor,textFormat)",
+        },
+      },
+      // Format Koopzegels Tracking data rows with alternating colors
+      {
+        repeatCell: {
+          range: {
+            sheetId: spreadsheet.data.sheets.find(
+              (s) => s.properties.title === "Koopzegels Tracking"
+            )?.properties.sheetId,
+            startRowIndex: 1,
+            endRowIndex: 1000,
+            startColumnIndex: 0,
+            endColumnIndex: koopzegelsHeaders.length,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: { red: 1.0, green: 0.97, blue: 0.95 },
               textFormat: {
                 bold: false,
                 foregroundColor: { red: 0, green: 0, blue: 0 },
