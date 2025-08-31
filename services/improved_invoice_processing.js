@@ -290,7 +290,6 @@ function createFallbackResponse(text, invoiceNumber) {
   const subtotalBeforePatterns = [
     /Subtotaal artikelen:\s*(\d+[.,]\d{2})/i,
     /(\d+)\s*SUBTOTAAL:\s*(\d+[.,]\d{2})/i,
-    /(\d+)\s*SUBTOTAAL:\s*(\d+[.,]\d{2})/i, // 21 SUBTOTAAL: 40,24
   ];
   
   for (const pattern of subtotalBeforePatterns) {
@@ -313,7 +312,7 @@ function createFallbackResponse(text, invoiceNumber) {
 
   // Extract BTW 9%
   const btw9Match = text.match(
-    /BTW OVER EUR\s*9%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i
+    /9%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i
   );
   if (btw9Match) {
     btw9Base = parseFloat(btw9Match[1].replace(",", "."));
@@ -322,7 +321,7 @@ function createFallbackResponse(text, invoiceNumber) {
 
   // Extract BTW 21%
   const btw21Match = text.match(
-    /BTW OVER EUR\s*21%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i
+    /21%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i
   );
   if (btw21Match) {
     btw21Base = parseFloat(btw21Match[1].replace(",", "."));
@@ -417,15 +416,23 @@ function createFallbackResponse(text, invoiceNumber) {
 
   const poiMatch = text.match(/POI:\s*(\d+)/i);
   if (poiMatch) poi = poiMatch[1];
+  
+  // Extract kassa number
+  const kassaMatch = text.match(/Kassa:\s*(\d+)/i);
+  if (kassaMatch) kassa = kassaMatch[1];
+  
+  // Extract periode
+  const periodeMatch = text.match(/Periode:\s*(\d+)/i);
+  if (periodeMatch) periode = periodeMatch[1];
 
   // Extract loyalty information
   let bonuskaart = "NB";
   let airMiles = "NB";
 
-  const bonuskaartMatch = text.match(/AH BONUS NR\.\s*(\w+)/i);
+  const bonuskaartMatch = text.match(/BONUSKAART:\s*(\w+)/i);
   if (bonuskaartMatch) bonuskaart = bonuskaartMatch[1];
 
-  const airMilesMatch = text.match(/AIRMILES NR\.\s*\*\s*(\w+)/i);
+  const airMilesMatch = text.match(/AIRMILES NR\.:\s*(\w+)/i);
   if (airMilesMatch) airMiles = airMilesMatch[1];
 
     // Extract individual items with comprehensive patterns
