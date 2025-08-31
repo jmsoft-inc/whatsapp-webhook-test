@@ -269,11 +269,27 @@ function createFallbackResponse(text, invoiceNumber) {
     /(\d+[.,]\d{2})\s*€/i,
   ];
 
-  for (const pattern of totalPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      total = parseFloat(match[1].replace(",", "."));
-      break;
+  // Find the last TOTAAL match (the final total)
+  const lines = text.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (line.includes('TOTAAL:') && !line.includes('BTW OVER EUR')) {
+      const match = line.match(/TOTAAL:\s*(\d+[.,]\d{2})/i);
+      if (match && !line.match(/TOTAAL:\s*(\d+[.,]\d{2})\s+(\d+[.,]\d{2})/)) {
+        total = parseFloat(match[1].replace(",", "."));
+        break;
+      }
+    }
+  }
+
+  // If no TOTAAL found, try other patterns
+  if (total === 0) {
+    for (const pattern of totalPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        total = parseFloat(match[1].replace(",", "."));
+        break;
+      }
     }
   }
 
@@ -287,11 +303,32 @@ function createFallbackResponse(text, invoiceNumber) {
     /SUBTOTAAL:\s*(\d+[.,]\d{2})/i,
   ];
   
-  for (const pattern of subtotalAfterPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      subtotalAfterDiscount = parseFloat(match[1].replace(",", "."));
-      break;
+  // Find all SUBTOTAAL matches and use the second one (after discounts)
+  const allSubtotalMatches = text.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/gi);
+  if (allSubtotalMatches && allSubtotalMatches.length >= 2) {
+    // Split text and find the second SUBTOTAAL occurrence
+    const lines = text.split('\n');
+    let subtotalCount = 0;
+    for (const line of lines) {
+      if (line.includes('SUBTOTAAL:')) {
+        subtotalCount++;
+        if (subtotalCount === 2) {
+          const match = line.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/i);
+          if (match) {
+            subtotalAfterDiscount = parseFloat(match[1].replace(",", "."));
+            break;
+          }
+        }
+      }
+    }
+  } else {
+    // Fallback to first pattern
+    for (const pattern of subtotalAfterPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        subtotalAfterDiscount = parseFloat(match[1].replace(",", "."));
+        break;
+      }
     }
   }
   
@@ -503,7 +540,13 @@ function createFallbackResponse(text, invoiceNumber) {
       itemCount = parseInt(itemCountMatch[1]);
     }
   } else {
-    itemCount = items.length;
+    // Use the item count from the first SUBTOTAAL line (21 SUBTOTAAL: 40,24)
+    const itemCountMatch = text.match(/(\d+)\s*SUBTOTAAL:/i);
+    if (itemCountMatch) {
+      itemCount = parseInt(itemCountMatch[1]);
+    } else {
+      itemCount = items.length;
+    }
   }
 
   // Payment method detection
