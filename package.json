@@ -1,0 +1,31 @@
+{
+  "name": "whatsapp-webhook-test",
+  "version": "1.0.0",
+  "description": "Test webhook app for WhatsApp Business API",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "check-env": "node check_env.js",
+    "test-whatsapp": "node test_whatsapp_api.js",
+    "test-webhook": "node test_webhook_flow.js",
+    "validate-google": "node validate_google_credentials.js",
+    "setup-sheets": "node setup_sheets_manually.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "googleapis": "^128.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "whatsapp",
+    "webhook",
+    "test",
+    "api"
+  ],
+  "author": "AI Agents Library",
+  "license": "MIT"
+}
