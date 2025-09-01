@@ -302,7 +302,7 @@ async function showMainMenu(from) {
         text: "🧾 AI Invoice Processor",
       },
       body: {
-        text: "Ik kan je helpen met het verwerken van facturen en bonnetjes. Kies een optie:",
+        text: "Welkom bij JMSoft AI Agents! 🤖\n\nIk ben je persoonlijke assistent voor het verwerken van facturen en bonnetjes. Van welke service wil je gebruik maken?\n\nMaak een keuze uit het menu hieronder:",
       },
       action: {
         button: "Menu openen",

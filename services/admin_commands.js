@@ -11,15 +11,25 @@ const GOOGLE_SHEETS_CREDENTIALS = process.env.GOOGLE_SHEETS_CREDENTIALS;
 
 // Initialize Google Sheets API
 let sheets;
-try {
-  const credentials = JSON.parse(GOOGLE_SHEETS_CREDENTIALS);
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
-  sheets = google.sheets({ version: "v4", auth });
-} catch (error) {
-  console.error("❌ Error initializing Google Sheets:", error);
+
+function initializeGoogleSheets() {
+  try {
+    if (!GOOGLE_SHEETS_CREDENTIALS) {
+      console.error("❌ GOOGLE_SHEETS_CREDENTIALS not set");
+      return false;
+    }
+    
+    const credentials = JSON.parse(GOOGLE_SHEETS_CREDENTIALS);
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
+    sheets = google.sheets({ version: "v4", auth });
+    return true;
+  } catch (error) {
+    console.error("❌ Error initializing Google Sheets:", error);
+    return false;
+  }
 }
 
 /**
@@ -28,6 +38,14 @@ try {
 async function clearAllSheetsData() {
   try {
     console.log("🧹 Clearing all sheets data...");
+
+    // Initialize Google Sheets if not already done
+    if (!sheets && !initializeGoogleSheets()) {
+      return {
+        success: false,
+        message: "❌ **Error clearing sheets data**\n\nCould not initialize Google Sheets API",
+      };
+    }
 
     const tabs = ["Invoices", "Detail Invoices", "Koopzegels Tracking"];
     const results = [];
@@ -79,6 +97,14 @@ async function getSheetsStatistics() {
   try {
     console.log("📊 Getting sheets statistics...");
 
+    // Initialize Google Sheets if not already done
+    if (!sheets && !initializeGoogleSheets()) {
+      return {
+        success: false,
+        message: "❌ **Error getting sheets statistics**\n\nCould not initialize Google Sheets API",
+      };
+    }
+
     const tabs = ["Invoices", "Detail Invoices", "Koopzegels Tracking"];
     const stats = [];
 
@@ -119,6 +145,14 @@ async function getSheetsStatistics() {
 async function resetSheetsHeaders() {
   try {
     console.log("🔧 Resetting sheets headers...");
+    
+    // Initialize Google Sheets if not already done
+    if (!sheets && !initializeGoogleSheets()) {
+      return {
+        success: false,
+        message: "❌ **Error resetting headers**\n\nCould not initialize Google Sheets API",
+      };
+    }
 
     // Import the setup function
     const {
@@ -155,6 +189,14 @@ async function resetSheetsHeaders() {
 async function deleteInvoiceByNumber(invoiceNumber) {
   try {
     console.log(`🗑️ Deleting invoice: ${invoiceNumber}`);
+
+    // Initialize Google Sheets if not already done
+    if (!sheets && !initializeGoogleSheets()) {
+      return {
+        success: false,
+        message: "❌ **Error deleting invoice**\n\nCould not initialize Google Sheets API",
+      };
+    }
 
     // Search in Invoices tab
     const invoicesResponse = await sheets.spreadsheets.values.get({

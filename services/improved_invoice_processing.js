@@ -5,11 +5,12 @@
 
 const axios = require("axios");
 
-// Generate unique invoice number
+// Generate unique invoice number with better uniqueness
 function generateInvoiceNumber() {
   const timestamp = Date.now();
-  const random = Math.floor(Math.random() * 1000);
-  return `INV-${timestamp}-${random}`;
+  const random = Math.floor(Math.random() * 10000); // Increased range
+  const processId = process.pid || Math.floor(Math.random() * 1000);
+  return `INV-${timestamp}-${random}-${processId}`;
 }
 
 // Improved OCR text extraction with Albert Heijn specific patterns
