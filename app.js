@@ -46,22 +46,34 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Webhook endpoint
+// Webhook GET endpoint for verification
+app.get("/webhook", async (req, res) => {
+  try {
+    console.log("📥 GET request received for webhook verification");
+    console.log("📋 Query hub.mode:", req.query["hub.mode"]);
+    console.log("📋 Query hub.challenge:", req.query["hub.challenge"]);
+    
+    // Handle webhook verification
+    if (req.query["hub.mode"] === "subscribe" && req.query["hub.challenge"]) {
+      console.log("✅ Webhook verification successful");
+      console.log("📋 Challenge:", req.query["hub.challenge"]);
+      res.status(200).send(req.query["hub.challenge"]);
+      return;
+    }
+    
+    res.status(400).send("Bad Request");
+  } catch (error) {
+    console.error("❌ Error in webhook verification:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// Webhook POST endpoint for receiving messages
 app.post("/webhook", async (req, res) => {
   try {
     console.log("📥 POST request received");
     console.log("📋 Request body object:", req.body.object);
-    console.log("📋 Query hub.mode:", req.query["hub.mode"]);
-    console.log("📋 Query hub.challenge:", req.query["hub.challenge"]);
     console.log("📋 Full request body:", JSON.stringify(req.body, null, 2));
-
-      // Handle webhook verification
-  if (req.query["hub.mode"] === "subscribe" && req.query["hub.challenge"]) {
-    console.log("✅ Webhook verification successful");
-    console.log("📋 Challenge:", req.query["hub.challenge"]);
-    res.status(200).send(req.query["hub.challenge"]);
-    return;
-  }
 
     // Process webhook events
     if (req.body.object === "whatsapp_business_account") {
