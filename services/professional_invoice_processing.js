@@ -453,6 +453,7 @@ async function saveProfessionalInvoiceToSheets(invoiceData) {
  */
 function isProfessionalInvoice(text) {
   const professionalIndicators = [
+    // Dutch professional invoice indicators
     /Handelsnaam:/i,
     /Factuurdatum:/i,
     /Vervaldatum:/i,
@@ -462,12 +463,36 @@ function isProfessionalInvoice(text) {
     /BIC:/i,
     /Totaalbedrag excl\. btw/i,
     /Totaalbedrag incl\. btw/i,
+    // English professional invoice indicators
+    /Invoice Number:/i,
+    /Invoice Date:/i,
+    /Due Date:/i,
+    /VAT Number:/i,
+    /Company Number:/i,
+    /Bank Account:/i,
+    /Subtotal excl\. VAT/i,
+    /Subtotal incl\. VAT/i,
+    // General professional invoice patterns
+    /FACTUUR/i,
+    /INVOICE/i,
+    /Leverancier:/i,
+    /Supplier:/i,
+    /Klant:/i,
+    /Customer:/i,
+    /Betaaltermijn:/i,
+    /Payment Terms:/i,
+    /T\.a\.v\./i, // "Ter attentie van" (Dutch)
+    /Attn:/i, // Attention (English)
   ];
 
   const matchCount = professionalIndicators.filter((indicator) =>
     indicator.test(text)
   ).length;
-  return matchCount >= 3; // At least 3 indicators suggest professional invoice
+
+  console.log(
+    `🔍 Professional invoice detection: ${matchCount} indicators found`
+  );
+  return matchCount >= 2; // Reduced threshold to 2 for better detection
 }
 
 /**

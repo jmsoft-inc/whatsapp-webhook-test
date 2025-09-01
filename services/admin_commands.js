@@ -4,6 +4,7 @@
  */
 
 const { google } = require("googleapis");
+const { createSystemStatusMessage } = require("./enhanced_error_handling");
 
 // Google Sheets configuration
 const GOOGLE_SHEETS_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
@@ -18,7 +19,7 @@ function initializeGoogleSheets() {
       console.error("❌ GOOGLE_SHEETS_CREDENTIALS not set");
       return false;
     }
-    
+
     const credentials = JSON.parse(GOOGLE_SHEETS_CREDENTIALS);
     const auth = new google.auth.GoogleAuth({
       credentials,
@@ -43,7 +44,8 @@ async function clearAllSheetsData() {
     if (!sheets && !initializeGoogleSheets()) {
       return {
         success: false,
-        message: "❌ **Error clearing sheets data**\n\nCould not initialize Google Sheets API",
+        message:
+          "❌ **Error clearing sheets data**\n\nCould not initialize Google Sheets API",
       };
     }
 
@@ -101,7 +103,8 @@ async function getSheetsStatistics() {
     if (!sheets && !initializeGoogleSheets()) {
       return {
         success: false,
-        message: "❌ **Error getting sheets statistics**\n\nCould not initialize Google Sheets API",
+        message:
+          "❌ **Error getting sheets statistics**\n\nCould not initialize Google Sheets API",
       };
     }
 
@@ -145,12 +148,13 @@ async function getSheetsStatistics() {
 async function resetSheetsHeaders() {
   try {
     console.log("🔧 Resetting sheets headers...");
-    
+
     // Initialize Google Sheets if not already done
     if (!sheets && !initializeGoogleSheets()) {
       return {
         success: false,
-        message: "❌ **Error resetting headers**\n\nCould not initialize Google Sheets API",
+        message:
+          "❌ **Error resetting headers**\n\nCould not initialize Google Sheets API",
       };
     }
 
@@ -194,7 +198,8 @@ async function deleteInvoiceByNumber(invoiceNumber) {
     if (!sheets && !initializeGoogleSheets()) {
       return {
         success: false,
-        message: "❌ **Error deleting invoice**\n\nCould not initialize Google Sheets API",
+        message:
+          "❌ **Error deleting invoice**\n\nCould not initialize Google Sheets API",
       };
     }
 
@@ -307,6 +312,7 @@ function getAdminCommandsList() {
     "• `/stats` - Show sheets statistics",
     "• `/reset` - Reset headers and formatting",
     "• `/delete INV-xxx` - Delete specific invoice",
+    "• `/status` - Show system status",
     "• `/help` - Show this help",
     "",
     "💡 *Usage:* Just type the command in WhatsApp",
@@ -342,6 +348,13 @@ async function processAdminCommand(command) {
 
     if (cmd === "/help" || cmd === "help") {
       return getAdminCommandsList();
+    }
+
+    if (cmd === "/status" || cmd === "status") {
+      return {
+        success: true,
+        message: createSystemStatusMessage(),
+      };
     }
 
     if (cmd.startsWith("/delete ")) {
