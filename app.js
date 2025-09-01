@@ -165,9 +165,9 @@ function createDocumentFingerprint(extractedText, documentType) {
     // Normalize text: remove whitespace, convert to lowercase
     const normalizedText = extractedText
       .toLowerCase()
-      .replace(/\s+/g, ' ')
+      .replace(/\s+/g, " ")
       .trim();
-    
+
     // Extract key identifying information
     const fingerprint = {
       // Look for company names
@@ -179,12 +179,15 @@ function createDocumentFingerprint(extractedText, documentType) {
       // Document type
       documentType: documentType,
       // Hash of normalized text (first 500 chars for performance)
-      textHash: require('crypto').createHash('md5').update(normalizedText.substring(0, 500)).digest('hex')
+      textHash: require("crypto")
+        .createHash("md5")
+        .update(normalizedText.substring(0, 500))
+        .digest("hex"),
     };
-    
+
     return fingerprint;
   } catch (error) {
-    console.error('❌ Error creating document fingerprint:', error);
+    console.error("❌ Error creating document fingerprint:", error);
     return null;
   }
 }
@@ -193,13 +196,20 @@ function createDocumentFingerprint(extractedText, documentType) {
  * Extract company name from text
  */
 function extractCompanyFromText(text) {
-  const companies = ['albert heijn', 'ah', 'jumbo', 'lidl', 'studiekosten', 'rompslomp'];
+  const companies = [
+    "albert heijn",
+    "ah",
+    "jumbo",
+    "lidl",
+    "studiekosten",
+    "rompslomp",
+  ];
   for (const company of companies) {
     if (text.includes(company)) {
       return company;
     }
   }
-  return 'unknown';
+  return "unknown";
 }
 
 /**
@@ -207,19 +217,19 @@ function extractCompanyFromText(text) {
  */
 function extractDateFromText(text) {
   const datePatterns = [
-    /(\d{4})-(\d{2})-(\d{2})/g,  // YYYY-MM-DD
-    /(\d{2})-(\d{2})-(\d{4})/g,  // DD-MM-YYYY
+    /(\d{4})-(\d{2})-(\d{2})/g, // YYYY-MM-DD
+    /(\d{2})-(\d{2})-(\d{4})/g, // DD-MM-YYYY
     /(\d{2})\/(\d{2})\/(\d{4})/g, // DD/MM/YYYY
-    /(\d{1,2})\s+(jan|feb|mar|apr|mei|jun|jul|aug|sep|okt|nov|dec)\s+(\d{4})/gi // DD MMM YYYY
+    /(\d{1,2})\s+(jan|feb|mar|apr|mei|jun|jul|aug|sep|okt|nov|dec)\s+(\d{4})/gi, // DD MMM YYYY
   ];
-  
+
   for (const pattern of datePatterns) {
     const match = text.match(pattern);
     if (match) {
       return match[0];
     }
   }
-  return 'unknown';
+  return "unknown";
 }
 
 /**
@@ -230,7 +240,9 @@ function extractTotalAmountFromText(text) {
   const amounts = text.match(amountPattern);
   if (amounts && amounts.length > 0) {
     // Convert to number and find the largest (likely total)
-    const numericAmounts = amounts.map(amt => parseFloat(amt.replace(/[€,\s]/g, '').replace(',', '.')));
+    const numericAmounts = amounts.map((amt) =>
+      parseFloat(amt.replace(/[€,\s]/g, "").replace(",", "."))
+    );
     return Math.max(...numericAmounts);
   }
   return 0;
@@ -242,30 +254,32 @@ function extractTotalAmountFromText(text) {
 function isDuplicateDocument(fingerprint, userPhone) {
   try {
     const key = `${userPhone}_${fingerprint.company}_${fingerprint.date}_${fingerprint.totalAmount}_${fingerprint.textHash}`;
-    
+
     // Check if we've seen this exact document before
     if (processedDocuments.has(key)) {
-      console.log(`🔄 Duplicate document detected: ${fingerprint.company} ${fingerprint.date} €${fingerprint.totalAmount}`);
+      console.log(
+        `🔄 Duplicate document detected: ${fingerprint.company} ${fingerprint.date} €${fingerprint.totalAmount}`
+      );
       return true;
     }
-    
+
     // Store this document fingerprint
     processedDocuments.set(key, {
       timestamp: Date.now(),
-      fingerprint: fingerprint
+      fingerprint: fingerprint,
     });
-    
+
     // Clean up old entries (older than 1 hour)
-    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
     for (const [docKey, docData] of processedDocuments.entries()) {
       if (docData.timestamp < oneHourAgo) {
         processedDocuments.delete(docKey);
       }
     }
-    
+
     return false;
   } catch (error) {
-    console.error('❌ Error checking for duplicates:', error);
+    console.error("❌ Error checking for duplicates:", error);
     return false;
   }
 }
@@ -785,15 +799,24 @@ async function processFileMessage(message, fileType) {
     );
     console.log("📝 Extracted text:", extractedText);
 
-    // Check for duplicate documents
-    const documentFingerprint = createDocumentFingerprint(extractedText, fileType);
-    if (documentFingerprint && isDuplicateDocument(documentFingerprint, from)) {
-      console.log("🔄 Duplicate document detected, skipping processing");
-      await sendWhatsAppMessage(
-        from,
-        `🔄 Dit document is al eerder verwerkt:\n\n📄 ${documentFingerprint.company}\n📅 ${documentFingerprint.date}\n💰 €${documentFingerprint.totalAmount}\n\nStuur een ander document of typ 'klaar' om af te ronden.`
-      );
-      return;
+    // Check for duplicate documents - improved detection
+    const documentFingerprint = createDocumentFingerprint(
+      extractedText,
+      fileType
+    );
+    
+    // Only check for duplicates if we have a valid fingerprint
+    if (documentFingerprint && documentFingerprint.company !== 'unknown' && documentFingerprint.totalAmount > 0) {
+      if (isDuplicateDocument(documentFingerprint, from)) {
+        console.log("🔄 Duplicate document detected, skipping processing");
+        await sendWhatsAppMessage(
+          from,
+          `🔄 Dit document is al eerder verwerkt:\n\n📄 ${documentFingerprint.company}\n📅 ${documentFingerprint.date}\n💰 €${documentFingerprint.totalAmount}\n\nStuur een ander document of typ 'klaar' om af te ronden.`
+        );
+        return;
+      }
+    } else {
+      console.log("⚠️ Could not create reliable fingerprint, proceeding with processing");
     }
 
     // Check if text extraction failed
@@ -876,11 +899,15 @@ async function processFileMessage(message, fileType) {
 
     // Send response based on mode
     if (session.multipleMode) {
+      // In multiple mode, just acknowledge the document and continue
       await sendSingleInvoiceResponse(
         from,
         invoiceData,
         session.invoices.length
       );
+      
+      // Don't show menu yet - wait for user to type 'klaar'
+      console.log(`📊 Document ${session.invoices.length} processed in multiple mode. Waiting for more documents or 'klaar' command.`);
     } else {
       await sendSingleInvoiceSummary(from, invoiceData);
       // Menu is automatically shown in sendSingleInvoiceSummary
@@ -904,14 +931,14 @@ async function sendSingleInvoiceResponse(from, invoiceData, invoiceNumber) {
   // Create comprehensive response using the new analysis structure
   const responseMessage = `📄 *Document ${invoiceNumber} Verwerkt!*
 
-🔍 *Document Type:* ${invoiceData.document_info?.type || "Onbekend"}
-🏪 *Bedrijf:* ${invoiceData.company_info?.name || "Onbekend"}
-💰 *Totaalbedrag:* €${invoiceData.financial_info?.total_amount || 0}
-📅 *Datum:* ${invoiceData.transaction_info?.date || "Onbekend"}
-🕐 *Tijd:* ${invoiceData.transaction_info?.time || "Onbekend"}
-📊 *Items:* ${invoiceData.item_summary?.total_items || 0} artikelen
-💳 *Betaalmethode:* ${invoiceData.financial_info?.payment_method || "Onbekend"}
-🎯 *Betrouwbaarheid:* ${invoiceData.document_info?.confidence || 0}%
+🔍 *Document Type:* ${invoiceData.document_info?.type || invoiceData.documentType || "Onbekend"}
+🏪 *Bedrijf:* ${invoiceData.company_info?.name || invoiceData.company || "Onbekend"}
+💰 *Totaalbedrag:* €${invoiceData.financial_info?.total_amount || invoiceData.totalAmount || 0}
+📅 *Datum:* ${invoiceData.transaction_info?.date || invoiceData.date || "Onbekend"}
+🕐 *Tijd:* ${invoiceData.transaction_info?.time || invoiceData.time || "Onbekend"}
+📊 *Items:* ${invoiceData.item_summary?.total_items || invoiceData.itemCount || 0} artikelen
+💳 *Betaalmethode:* ${invoiceData.financial_info?.payment_method || invoiceData.paymentMethod || "Onbekend"}
+🎯 *Betrouwbaarheid:* ${invoiceData.document_info?.confidence || invoiceData.confidence || 0}%
 
 *Extra Details:*
 • BTW 9%: €${invoiceData.financial_info?.tax_9 || 0}
@@ -990,11 +1017,7 @@ async function sendMultipleInvoicesSummary(from, session) {
     if (invoice.company_info?.name) companies.add(invoice.company_info.name);
   });
 
-  // Limit to maximum 4 documents for WhatsApp response
-  const maxDocuments = 4;
-  const documentsToShow = session.invoices.slice(0, maxDocuments);
-  const remainingCount = Math.max(0, session.invoices.length - maxDocuments);
-
+  // Show ALL documents in the summary (not limited to 4)
   let responseMessage = `📊 *Meerdere Documenten Verwerking Voltooid!*
 
 📄 *Aantal documenten:* ${session.invoices.length}
@@ -1003,28 +1026,26 @@ async function sendMultipleInvoicesSummary(from, session) {
 📊 *Totaal items:* ${totalItems}
 📅 *Verwerkt op:* ${new Date().toLocaleDateString("nl-NL")}
 
-📋 *Belangrijkste Eigenschappen (max ${maxDocuments}):*`;
+📋 *Alle Documenten Overzicht:*`;
 
-  // Add key properties for each document (max 4)
-  documentsToShow.forEach((invoice, index) => {
+  // Add details for ALL documents
+  session.invoices.forEach((invoice, index) => {
     const docNum = index + 1;
-    const company = invoice.company_info?.name || "Onbekend";
-    const amount = invoice.financial_info?.total_amount || 0;
-    const date = invoice.transaction_info?.date || "Onbekend";
-    const items = invoice.item_summary?.total_items || 0;
-    const payment = invoice.financial_info?.payment_method || "Onbekend";
+    const company = invoice.company_info?.name || invoice.company || "Onbekend";
+    const amount = invoice.financial_info?.total_amount || invoice.total_amount || 0;
+    const date = invoice.transaction_info?.date || invoice.date || "Onbekend";
+    const items = invoice.item_summary?.total_items || invoice.item_count || 0;
+    const payment = invoice.financial_info?.payment_method || invoice.payment_method || "Onbekend";
+    const confidence = invoice.document_info?.confidence || invoice.confidence || 0;
 
     responseMessage += `\n\n*Document ${docNum}:*
 🏪 ${company}
 💰 €${amount}
 📅 ${date}
 📊 ${items} items
-💳 ${payment}`;
+💳 ${payment}
+🎯 ${confidence}% betrouwbaarheid`;
   });
-
-  if (remainingCount > 0) {
-    responseMessage += `\n\n*... en nog ${remainingCount} documenten meer*`;
-  }
 
   responseMessage += `\n\n✅ *Alle data opgeslagen in Google Sheets*
 📊 *Bekijk de spreadsheet:* ${sheetUrl}
@@ -1035,7 +1056,7 @@ async function sendMultipleInvoicesSummary(from, session) {
 
   await sendWhatsAppMessage(from, responseMessage);
 
-  // Automatically show menu after multiple invoices processing
+  // Show menu after comprehensive summary
   await showMainMenu(from);
 }
 
