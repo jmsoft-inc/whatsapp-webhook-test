@@ -169,7 +169,7 @@ class InvoiceAnalysisLibrary {
   async extractTextWithOCR(filePath) {
     try {
       console.log(`🔍 Performing OCR extraction on: ${filePath}`);
-      
+
       // Check if file exists
       if (!fs.existsSync(filePath)) {
         console.error(`❌ File not found: ${filePath}`);
@@ -178,28 +178,34 @@ class InvoiceAnalysisLibrary {
 
       // Get file extension
       const ext = path.extname(filePath).toLowerCase();
-      
+
       // For text-based files, read directly
-      if (ext === '.txt' || ext === '.json' || ext === '.csv') {
+      if (ext === ".txt" || ext === ".json" || ext === ".csv") {
         console.log(`📖 Reading text file directly: ${filePath}`);
-        return fs.readFileSync(filePath, 'utf8');
+        return fs.readFileSync(filePath, "utf8");
       }
 
       // For images and PDFs, we need OCR processing
       // Since we don't have Tesseract installed, we'll use a fallback approach
       // In production, you would use: const tesseract = require('node-tesseract-ocr');
-      
-      console.log(`🔄 OCR not available, trying alternative extraction for: ${filePath}`);
-      
+
+      console.log(
+        `🔄 OCR not available, trying alternative extraction for: ${filePath}`
+      );
+
       // Try to extract any text content from the file
       const fileContent = fs.readFileSync(filePath);
-      
+
       // Look for text patterns in binary files
-      const textPatterns = fileContent.toString('utf8').match(/[\x20-\x7E\n\r\t]+/g);
+      const textPatterns = fileContent
+        .toString("utf8")
+        .match(/[\x20-\x7E\n\r\t]+/g);
       if (textPatterns && textPatterns.length > 0) {
-        const extractedText = textPatterns.join(' ').trim();
+        const extractedText = textPatterns.join(" ").trim();
         if (extractedText.length > 50) {
-          console.log(`✅ Extracted text from file: ${extractedText.length} characters`);
+          console.log(
+            `✅ Extracted text from file: ${extractedText.length} characters`
+          );
           return extractedText;
         }
       }
@@ -207,7 +213,6 @@ class InvoiceAnalysisLibrary {
       // If no text found, return null to trigger AI extraction
       console.log(`⚠️ No text extracted from file, will try AI extraction`);
       return null;
-      
     } catch (error) {
       console.error(`❌ OCR extraction error: ${error.message}`);
       return null;
@@ -220,7 +225,7 @@ class InvoiceAnalysisLibrary {
   async extractTextWithAI(filePath) {
     try {
       console.log(`🤖 Performing AI extraction on: ${filePath}`);
-      
+
       // Check if file exists
       if (!fs.existsSync(filePath)) {
         console.error(`❌ File not found: ${filePath}`);
@@ -229,30 +234,32 @@ class InvoiceAnalysisLibrary {
 
       // For AI extraction, we would typically use OpenAI's Vision API
       // Since we don't have the API key configured, we'll use file reading as fallback
-      
+
       const ext = path.extname(filePath).toLowerCase();
-      
+
       // For text files, read directly
-      if (ext === '.txt' || ext === '.json' || ext === '.csv') {
+      if (ext === ".txt" || ext === ".json" || ext === ".csv") {
         console.log(`📖 Reading text file with AI fallback: ${filePath}`);
-        return fs.readFileSync(filePath, 'utf8');
+        return fs.readFileSync(filePath, "utf8");
       }
 
       // For images and PDFs, try to extract any readable content
       try {
         const fileContent = fs.readFileSync(filePath);
-        
+
         // Try different encodings
-        const encodings = ['utf8', 'latin1', 'ascii'];
-        
+        const encodings = ["utf8", "latin1", "ascii"];
+
         for (const encoding of encodings) {
           try {
             const decoded = fileContent.toString(encoding);
             const textMatch = decoded.match(/[\x20-\x7E\n\r\t]{20,}/g);
             if (textMatch && textMatch.length > 0) {
-              const extractedText = textMatch.join(' ').trim();
+              const extractedText = textMatch.join(" ").trim();
               if (extractedText.length > 50) {
-                console.log(`✅ AI fallback extracted text (${encoding}): ${extractedText.length} characters`);
+                console.log(
+                  `✅ AI fallback extracted text (${encoding}): ${extractedText.length} characters`
+                );
                 return extractedText;
               }
             }
@@ -262,13 +269,16 @@ class InvoiceAnalysisLibrary {
           }
         }
       } catch (readError) {
-        console.error(`❌ Error reading file for AI extraction: ${readError.message}`);
+        console.error(
+          `❌ Error reading file for AI extraction: ${readError.message}`
+        );
       }
 
       // If all else fails, return a generic message
       console.log(`⚠️ AI extraction failed, returning generic text`);
-      return `Document uploaded: ${path.basename(filePath)}\nFile type: ${ext}\nProcessing required for detailed extraction.`;
-      
+      return `Document uploaded: ${path.basename(
+        filePath
+      )}\nFile type: ${ext}\nProcessing required for detailed extraction.`;
     } catch (error) {
       console.error(`❌ AI extraction error: ${error.message}`);
       return null;
@@ -288,7 +298,7 @@ class InvoiceAnalysisLibrary {
   }
 
   /**
-   * Process extracted text with AI for comprehensive analysis
+   * Process text with AI for comprehensive analysis
    */
   async processWithAI(text, documentType, options = {}) {
     if (!process.env.OPENAI_API_KEY) {
@@ -297,21 +307,27 @@ class InvoiceAnalysisLibrary {
     }
 
     try {
-      const prompt = this.createAnalysisPrompt(text, documentType, options);
+      console.log(`🤖 Processing with AI: ${documentType}`);
+      console.log(`📄 Text length: ${text ? text.length : 0} characters`);
+
+      // Check if text is too large for OpenAI API (limit to ~150k tokens for gpt-4o-mini)
+      const maxTextLength = 100000; // Conservative limit
+      
+      if (text && text.length > maxTextLength) {
+        console.log(`⚠️ Text too large (${text.length} chars), creating summary for AI analysis`);
+        text = await this.createTextSummary(text, maxTextLength);
+        console.log(`📝 Summary text length: ${text.length} characters`);
+      }
+
+      const { system, user } = this.createAnalysisPrompt(text, documentType, options);
 
       const response = await axios.post(
         "https://api.openai.com/v1/chat/completions",
         {
           model: this.config.openai.model,
           messages: [
-            {
-              role: "system",
-              content: prompt.system,
-            },
-            {
-              role: "user",
-              content: prompt.user,
-            },
+            { role: "system", content: system },
+            { role: "user", content: user },
           ],
           temperature: this.config.openai.temperature,
           max_tokens: this.config.openai.maxTokens,
@@ -326,20 +342,33 @@ class InvoiceAnalysisLibrary {
       );
 
       const aiResponse = response.data.choices[0].message.content;
-      console.log("🤖 AI Analysis completed");
+      console.log(`✅ AI analysis completed: ${aiResponse.length} characters`);
 
+      // Try to parse JSON response
       try {
-        return JSON.parse(aiResponse);
+        const analysis = JSON.parse(aiResponse);
+        return analysis;
       } catch (parseError) {
-        console.error("❌ Error parsing AI response:", parseError);
-        return this.createFallbackAnalysis(text, documentType);
+        console.error("❌ Failed to parse AI response as JSON:", parseError);
+        // Try to extract JSON from the response
+        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            return JSON.parse(jsonMatch[0]);
+          } catch (secondParseError) {
+            console.error("❌ Failed to parse extracted JSON:", secondParseError);
+          }
+        }
+        
+        // If all parsing fails, create enhanced fallback
+        return this.createEnhancedFallbackAnalysis(text, documentType, aiResponse);
       }
     } catch (error) {
       console.error("❌ OpenAI API error:", error.message);
       if (error.response) {
         console.error("❌ API Response:", error.response.status, error.response.data);
       }
-      return this.createFallbackAnalysis(text, documentType);
+      return this.createEnhancedFallbackAnalysis(text, documentType, null);
     }
   }
 
@@ -498,11 +527,95 @@ class InvoiceAnalysisLibrary {
       btw_breakdown: this.extractBTWBreakdown(text),
       store_info: this.extractStoreInfo(text),
       bank_info: this.extractBankInfo(text),
-      notes: `Fallback analysis - manual verification recommended. Text extracted: ${text ? text.substring(0, 200) + '...' : 'No text'}`,
-      raw_text: text,
+      notes: `Fallback analysis - manual verification recommended. Text extracted: ${
+        text ? text.substring(0, 200) + "..." : "No text"
+      }`,
+      raw_text: text ? text.substring(0, 50000) : "", // Limit raw_text for Google Sheets
     };
 
     return analysis;
+  }
+
+  /**
+   * Create enhanced fallback analysis with document-specific information
+   */
+  createEnhancedFallbackAnalysis(text, documentType, aiResponse = null) {
+    console.log(`📝 Creating enhanced fallback analysis for ${documentType}`);
+    console.log(`📄 Extracted text length: ${text ? text.length : 0} characters`);
+
+    // Extract document-specific patterns
+    const patterns = this.extractDocumentPatterns(text);
+    
+    const analysis = {
+      document_info: {
+        type: documentType,
+        subtype: this.detectSubtype(text),
+        language: this.detectLanguage(text),
+        confidence: 75, // Higher confidence for enhanced fallback
+      },
+      company_info: this.extractCompanyInfo(text),
+      transaction_info: this.extractTransactionInfo(text),
+      financial_info: this.extractFinancialInfo(text),
+      loyalty_info: this.extractLoyaltyInfo(text),
+      items: this.extractItems(text),
+      item_summary: this.createItemSummary(text),
+      btw_breakdown: this.extractBTWBreakdown(text),
+      store_info: this.extractStoreInfo(text),
+      bank_info: this.extractBankInfo(text),
+      notes: this.createEnhancedNotes(text, documentType, patterns, aiResponse),
+      raw_text: text ? text.substring(0, 50000) : "", // Limit raw_text for Google Sheets
+    };
+
+    return analysis;
+  }
+
+  /**
+   */
+  extractDocumentPatterns(text) {
+    if (!text) return {};
+    
+    const patterns = {
+      hasDate: /\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/.test(text),
+      hasTime: /\d{1,2}:\d{2}/.test(text),
+      hasAmount: /€?\s*\d+[.,]\d{2}/.test(text),
+      hasTotal: /totaal|total|sum|eindtotaal/i.test(text),
+      hasBTW: /btw|vat|tax/i.test(text),
+      hasItems: /\d+\s*x\s*[€€]?\s*\d+[.,]\d{2}/.test(text),
+      hasStoreInfo: /filiaal|kassa|medewerker|employee/i.test(text),
+      hasPaymentInfo: /pin|kaart|card|contant|cash/i.test(text),
+    };
+    
+    return patterns;
+  }
+
+  /**
+   * Create enhanced notes with document-specific information
+   */
+  createEnhancedNotes(text, documentType, patterns, aiResponse) {
+    const notes = [];
+    
+    notes.push(`Enhanced fallback analysis for ${documentType}`);
+    
+    if (patterns.hasDate) notes.push("✓ Date detected");
+    if (patterns.hasTime) notes.push("✓ Time detected");
+    if (patterns.hasAmount) notes.push("✓ Amounts detected");
+    if (patterns.hasTotal) notes.push("✓ Total detected");
+    if (patterns.hasBTW) notes.push("✓ BTW/VAT detected");
+    if (patterns.hasItems) notes.push("✓ Items detected");
+    if (patterns.hasStoreInfo) notes.push("✓ Store info detected");
+    if (patterns.hasPaymentInfo) notes.push("✓ Payment info detected");
+    
+    if (text) {
+      const textPreview = text.length > 200 ? text.substring(0, 200) + "..." : text;
+      notes.push(`Text preview: ${textPreview}`);
+      notes.push(`Full text length: ${text.length} characters`);
+    }
+    
+    if (aiResponse) {
+      notes.push(`AI response available but not parseable`);
+    }
+    
+    return notes.join(" | ");
   }
 
   /**
@@ -1065,6 +1178,89 @@ class InvoiceAnalysisLibrary {
         ],
       },
     };
+  }
+
+  /**
+   * Truncate text for AI processing while preserving important information
+   */
+  truncateTextForAI(text, maxLength) {
+    if (!text || text.length <= maxLength) {
+      return text;
+    }
+
+    // Try to keep the most important parts (beginning and end)
+    const startLength = Math.floor(maxLength * 0.6); // 60% from start
+    const endLength = Math.floor(maxLength * 0.4);   // 40% from end
+    
+    const start = text.substring(0, startLength);
+    const end = text.substring(text.length - endLength);
+    
+    return `${start}\n\n[... truncated for AI processing ...]\n\n${end}`;
+  }
+
+  /**
+   * Create a summary of large text for AI processing
+   */
+  async createTextSummary(text, maxLength = 50000) {
+    if (!text || text.length <= maxLength) {
+      return text;
+    }
+
+    try {
+      console.log(`📝 Creating summary of large text (${text.length} chars)`);
+      
+      // Extract key information patterns
+      const summary = this.extractKeyInformation(text);
+      
+      // If summary is still too long, truncate it
+      if (summary.length > maxLength) {
+        return this.truncateTextForAI(summary, maxLength);
+      }
+      
+      return summary;
+    } catch (error) {
+      console.error("❌ Error creating text summary:", error);
+      return this.truncateTextForAI(text, maxLength);
+    }
+  }
+
+  /**
+   * Extract key information from text for summarization
+   */
+  extractKeyInformation(text) {
+    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    const keyLines = [];
+    
+    // Look for lines with important patterns
+    const importantPatterns = [
+      /totaal|total|sum|eindtotaal/i,
+      /btw|vat|tax/i,
+      /€\s*\d+[.,]\d{2}/,
+      /\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/,
+      /\d{1,2}:\d{2}/,
+      /filiaal|kassa|medewerker|employee/i,
+      /pin|kaart|card|contant|cash/i,
+      /bonuskaart|air miles|loyalty/i,
+      /albert heijn|jumbo|lidl|aldi|etos|kruidvat/i
+    ];
+    
+    for (const line of lines) {
+      const isImportant = importantPatterns.some(pattern => pattern.test(line));
+      if (isImportant) {
+        keyLines.push(line);
+      }
+    }
+    
+    // If we found important lines, use them
+    if (keyLines.length > 0) {
+      return `Key Information:\n${keyLines.join('\n')}\n\nFull Text Length: ${text.length} characters`;
+    }
+    
+    // Otherwise, use first and last parts
+    const firstPart = text.substring(0, Math.floor(text.length * 0.3));
+    const lastPart = text.substring(text.length - Math.floor(text.length * 0.2));
+    
+    return `Text Summary:\n${firstPart}\n\n[... middle content omitted ...]\n\n${lastPart}\n\nFull Text Length: ${text.length} characters`;
   }
 }
 

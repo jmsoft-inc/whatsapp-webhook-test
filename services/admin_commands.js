@@ -50,7 +50,7 @@ async function clearAllSheetsData() {
       };
     }
 
-    const tabs = ["Invoices", "Detail Invoices", "Koopzegels Tracking"];
+    const tabs = ["Invoices", "Detail Invoices", "Koopzegels Tracking", "Comprehensive Analysis"];
     const results = [];
 
     for (const tab of tabs) {
@@ -79,9 +79,21 @@ async function clearAllSheetsData() {
       }
     }
 
+    const message = [
+      "🧹 *Sheets Data Cleared Successfully*",
+      "",
+      "📋 *Cleared Tabs:*",
+      ...results.map(result => `• ${result}`),
+      "",
+      "✨ *Next Steps:*",
+      "• Upload new invoices/receipts",
+      "• Use `/stats` to verify clearance",
+      "• Use `/help` for more commands"
+    ].join("\n");
+
     return {
       success: true,
-      message: "🧹 **Sheets Data Cleared**\n\n" + results.join("\n"),
+      message: message,
       details: results,
     };
   } catch (error) {
@@ -109,7 +121,7 @@ async function getSheetsStatistics() {
       };
     }
 
-    const tabs = ["Invoices", "Detail Invoices", "Koopzegels Tracking"];
+    const tabs = ["Invoices", "Detail Invoices", "Koopzegels Tracking", "Comprehensive Analysis"];
     const stats = [];
 
     for (const tab of tabs) {
@@ -129,9 +141,21 @@ async function getSheetsStatistics() {
       }
     }
 
+    const message = [
+      "📊 *Sheets Statistics*",
+      "",
+      "📈 *Current Data:*",
+      ...stats.map(stat => `• ${stat}`),
+      "",
+      "💡 *Tips:*",
+      "• Use `/clear` to reset all data",
+      "• Upload invoices to add new entries",
+      "• Use `/help` for more commands"
+    ].join("\n");
+
     return {
       success: true,
-      message: "📊 **Sheets Statistics**\n\n" + stats.join("\n"),
+      message: message,
       details: stats,
     };
   } catch (error) {

@@ -282,11 +282,17 @@ class ComprehensiveSheetsService {
         "Unieke Items",
         "Categorieën",
         "Opmerkingen",
-        "Ruwe Tekst"
+        "Ruwe Tekst Preview",
+        "Ruwe Tekst Lengte"
       ];
 
       // Ensure headers exist
       await this.ensureHeaders("Comprehensive Analysis", headers);
+
+      // Handle raw_text character limit for Google Sheets
+      const rawText = analysisData.raw_text || "";
+      const rawTextPreview = this.truncateForSheets(rawText, 1000); // Show first 1000 chars
+      const rawTextLength = rawText.length;
 
       const rowData = [
         invoiceNumber, // Factuurnummer
@@ -346,8 +352,9 @@ class ComprehensiveSheetsService {
         analysisData.item_summary?.total_items || 0, // Totaal Items
         analysisData.item_summary?.unique_items || 0, // Unieke Items
         (analysisData.item_summary?.categories || []).join(", "), // Categorieën
-        analysisData.notes || "", // Opmerkingen
-        analysisData.raw_text || "" // Ruwe Tekst
+        this.truncateForSheets(analysisData.notes || "", 2000), // Opmerkingen
+        rawTextPreview, // Ruwe Tekst Preview
+        rawTextLength // Ruwe Tekst Lengte
       ];
 
       await this.sheets.spreadsheets.values.append({
@@ -365,6 +372,17 @@ class ComprehensiveSheetsService {
       console.error("❌ Error saving to analysis tab:", error);
       return false;
     }
+  }
+
+  /**
+   * Truncate text for Google Sheets (respect 50k character limit)
+   */
+  truncateForSheets(text, maxLength = 45000) {
+    if (!text || text.length <= maxLength) {
+      return text;
+    }
+    
+    return text.substring(0, maxLength) + `\n\n[... truncated - full length: ${text.length} characters ...]`;
   }
 
   /**
