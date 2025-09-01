@@ -51,16 +51,17 @@ app.post("/webhook", async (req, res) => {
   try {
     console.log("📥 POST request received");
     console.log("📋 Request body object:", req.body.object);
-    console.log("📋 Request body mode:", req.body.mode);
-    console.log("📋 Request body hub.challenge:", req.body["hub.challenge"]);
+    console.log("📋 Query hub.mode:", req.query["hub.mode"]);
+    console.log("📋 Query hub.challenge:", req.query["hub.challenge"]);
     console.log("📋 Full request body:", JSON.stringify(req.body, null, 2));
 
-    // Handle webhook verification
-    if (req.body.mode === "subscribe" && req.body["hub.challenge"]) {
-      console.log("✅ Webhook verification successful");
-      res.status(200).send(req.body["hub.challenge"]);
-      return;
-    }
+      // Handle webhook verification
+  if (req.query["hub.mode"] === "subscribe" && req.query["hub.challenge"]) {
+    console.log("✅ Webhook verification successful");
+    console.log("📋 Challenge:", req.query["hub.challenge"]);
+    res.status(200).send(req.query["hub.challenge"]);
+    return;
+  }
 
     // Process webhook events
     if (req.body.object === "whatsapp_business_account") {
