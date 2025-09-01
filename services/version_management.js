@@ -1,9 +1,9 @@
 /**
- * Version Management Service
- * Tracks development progress and maintains semantic versioning
+ * Version Management System
+ * Handles version tracking, milestones, and development history
  */
 
-// Version history based on git commits and development milestones
+// Version history configuration
 const VERSION_HISTORY = {
   // Major features and breaking changes
   major: 1,
@@ -12,13 +12,13 @@ const VERSION_HISTORY = {
   minor: 8,
 
   // Bug fixes and patches
-  patch: 19,
+  patch: 20,
 
   // Development stage
   stage: "stable", // 'alpha', 'beta', 'rc', 'stable'
 
   // Build number (git commit count)
-  build: 75,
+  build: 76,
 
   // Release date
   releaseDate: "2025-09-01",
@@ -36,7 +36,6 @@ const VERSION_HISTORY = {
         "Google Sheets integration",
       ],
     },
-
     {
       version: "1.1.0",
       date: "2025-08-30",
@@ -47,7 +46,6 @@ const VERSION_HISTORY = {
         "Multi-file support for WhatsApp webhook",
       ],
     },
-
     {
       version: "1.2.0",
       date: "2025-08-31",
@@ -59,7 +57,6 @@ const VERSION_HISTORY = {
         "Improved Google Sheets styling",
       ],
     },
-
     {
       version: "1.3.0",
       date: "2025-09-01",
@@ -70,7 +67,6 @@ const VERSION_HISTORY = {
         "Comprehensive admin commands for WhatsApp",
       ],
     },
-
     {
       version: "1.4.0",
       date: "2025-09-01",
@@ -81,7 +77,6 @@ const VERSION_HISTORY = {
         "100% accuracy for Albert Heijn PDF extraction",
       ],
     },
-
     {
       version: "1.5.0",
       date: "2025-09-01",
@@ -92,7 +87,6 @@ const VERSION_HISTORY = {
         "Professional invoice processing for Romslomp",
       ],
     },
-
     {
       version: "1.6.0",
       date: "2025-09-01",
@@ -103,7 +97,6 @@ const VERSION_HISTORY = {
         "WhatsApp menu fixes and List Message implementation",
       ],
     },
-
     {
       version: "1.7.0",
       date: "2025-09-01",
@@ -114,7 +107,6 @@ const VERSION_HISTORY = {
         "Enhanced error handling and validation",
       ],
     },
-
     {
       version: "1.8.0",
       date: "2025-09-01",
@@ -126,7 +118,6 @@ const VERSION_HISTORY = {
         "Real-time system status",
       ],
     },
-
     {
       version: "1.8.13",
       date: "2025-09-01",
@@ -138,7 +129,6 @@ const VERSION_HISTORY = {
         "Message validation and phone number validation",
       ],
     },
-
     {
       version: "1.8.14",
       date: "2025-09-01",
@@ -150,7 +140,6 @@ const VERSION_HISTORY = {
         "Enhanced user experience with reliable messaging",
       ],
     },
-
     {
       version: "1.8.15",
       date: "2025-09-01",
@@ -162,7 +151,6 @@ const VERSION_HISTORY = {
         "Enhanced user experience with better menu flow",
       ],
     },
-
     {
       version: "1.8.16",
       date: "2025-09-01",
@@ -173,7 +161,6 @@ const VERSION_HISTORY = {
         "Professional version management workflow",
       ],
     },
-
     {
       version: "1.8.17",
       date: "2025-09-01",
@@ -184,592 +171,14 @@ const VERSION_HISTORY = {
         "Professional development workflow",
       ],
     },
-  ],
-    },
-
     {
-      version: "1.1.0",
-      date: "2025-08-30",
-      features: [
-        "Albert Heijn receipt processing",
-        "PDF text extraction",
-        "Data validation and error handling",
-        "Multi-file support for WhatsApp webhook",
-      ],
-    },
-
-    {
-      version: "1.2.0",
-      date: "2025-08-31",
-      features: [
-        "Professional invoice processing",
-        "Document type detection",
-        "Enhanced regex patterns",
-        "Koopzegels tracking tab",
-        "Improved Google Sheets styling",
-      ],
-    },
-
-    {
-      version: "1.3.0",
+      version: "1.8.20",
       date: "2025-09-01",
       features: [
-        "Admin commands system",
-        "Google Sheets management",
-        "WhatsApp interactive menus",
-        "Comprehensive admin commands for WhatsApp",
-      ],
-    },
-
-    {
-      version: "1.4.0",
-      date: "2025-09-01",
-      features: [
-        "Performance monitoring",
-        "Enhanced user feedback",
-        "Comprehensive testing suite",
-        "100% accuracy for Albert Heijn PDF extraction",
-      ],
-    },
-
-    {
-      version: "1.5.0",
-      date: "2025-09-01",
-      features: [
-        "Multi-file processing",
-        "Advanced error handling",
-        "System status monitoring",
-        "Professional invoice processing for Romslomp",
-      ],
-    },
-
-    {
-      version: "1.6.0",
-      date: "2025-09-01",
-      features: [
-        "Koopzegels tracking",
-        "Detailed invoice breakdown",
-        "Enhanced Google Sheets formatting",
-        "WhatsApp menu fixes and List Message implementation",
-      ],
-    },
-
-    {
-      version: "1.7.0",
-      date: "2025-09-01",
-      features: [
-        "WhatsApp List Message menus",
-        "Professional invoice detection",
-        "Improved user experience",
-        "Enhanced error handling and validation",
-      ],
-    },
-
-    {
-      version: "1.8.0",
-      date: "2025-09-01",
-      features: [
-        "Comprehensive performance monitoring",
-        "Enhanced user feedback system",
-        "Complete integration testing",
-        "Advanced admin commands",
-        "Real-time system status",
-      ],
-    },
-
-    {
-      version: "1.8.13",
-      date: "2025-09-01",
-      features: [
-        "Enhanced WhatsApp menu with professional structure",
-        "Version management system",
-        "Improved user responses",
-        "WhatsApp API error handling",
-        "Message validation and phone number validation",
-      ],
-    },
-
-    {
-      version: "1.8.14",
-      date: "2025-09-01",
-      features: [
-        "Fixed WhatsApp API 400 errors with Button Messages",
-        "Fallback text menu for compatibility",
-        "Admin commands via text interface",
-        "Improved error handling and validation",
-        "Enhanced user experience with reliable messaging",
-      ],
-    },
-
-    {
-      version: "1.8.15",
-      date: "2025-09-01",
-      features: [
-        "Updated menu structure with AI Agent organization",
-        "Improved welcome message with friendly and professional tone",
-        "Reorganized admin and information commands",
-        "Fixed release dates in version management",
-        "Enhanced user experience with better menu flow",
-      ],
-    },
-
-    {
-      version: "1.8.16",
-      date: "2025-09-01",
-      features: [
-        "Automatic version management system",
-        "Current date updates and build number synchronization",
-        "Version update scripts and documentation",
-        "Professional version management workflow",
-      ],
-    },
-
-          {
-        version: "1.8.17",
-        date: "2025-09-01",
-        features: [
-          "Comprehensive version management documentation",
-          "Automatic milestone tracking",
-          "Git commit count synchronization",
-          "Professional development workflow",
-        ],
-      },
-      {
-        version: "1.8.19",
-        date: "2025-09-01",
-        features: [
-          "Finalized version management with accurate dates",
-          "Completed milestone synchronization with git history",
-          "Updated WhatsApp version information display",
-          "Professional version management system",
-        ],
-      },
-    ],
-    },
-
-    {
-      version: "1.1.0",
-      date: "2025-08-30",
-      features: [
-        "Albert Heijn receipt processing",
-        "PDF text extraction",
-        "Data validation and error handling",
-        "Multi-file support for WhatsApp webhook",
-      ],
-    },
-
-    {
-      version: "1.2.0",
-      date: "2025-08-31",
-      features: [
-        "Professional invoice processing",
-        "Document type detection",
-        "Enhanced regex patterns",
-        "Koopzegels tracking tab",
-        "Improved Google Sheets styling",
-      ],
-    },
-
-    {
-      version: "1.3.0",
-      date: "2025-09-01",
-      features: [
-        "Admin commands system",
-        "Google Sheets management",
-        "WhatsApp interactive menus",
-        "Comprehensive admin commands for WhatsApp",
-      ],
-    },
-
-    {
-      version: "1.4.0",
-      date: "2025-09-01",
-      features: [
-        "Performance monitoring",
-        "Enhanced user feedback",
-        "Comprehensive testing suite",
-        "100% accuracy for Albert Heijn PDF extraction",
-      ],
-    },
-
-    {
-      version: "1.5.0",
-      date: "2025-09-01",
-      features: [
-        "Multi-file processing",
-        "Advanced error handling",
-        "System status monitoring",
-        "Professional invoice processing for Romslomp",
-      ],
-    },
-
-    {
-      version: "1.6.0",
-      date: "2025-09-01",
-      features: [
-        "Koopzegels tracking",
-        "Detailed invoice breakdown",
-        "Enhanced Google Sheets formatting",
-        "WhatsApp menu fixes and List Message implementation",
-      ],
-    },
-
-    {
-      version: "1.7.0",
-      date: "2025-09-01",
-      features: [
-        "WhatsApp List Message menus",
-        "Professional invoice detection",
-        "Improved user experience",
-        "Enhanced error handling and validation",
-      ],
-    },
-
-    {
-      version: "1.8.0",
-      date: "2025-09-01",
-      features: [
-        "Comprehensive performance monitoring",
-        "Enhanced user feedback system",
-        "Complete integration testing",
-        "Advanced admin commands",
-        "Real-time system status",
-      ],
-    },
-
-    {
-      version: "1.8.13",
-      date: "2025-09-01",
-      features: [
-        "Enhanced WhatsApp menu with professional structure",
-        "Version management system",
-        "Improved user responses",
-        "WhatsApp API error handling",
-        "Message validation and phone number validation",
-      ],
-    },
-
-    {
-      version: "1.8.14",
-      date: "2025-09-01",
-      features: [
-        "Fixed WhatsApp API 400 errors with Button Messages",
-        "Fallback text menu for compatibility",
-        "Admin commands via text interface",
-        "Improved error handling and validation",
-        "Enhanced user experience with reliable messaging",
-      ],
-    },
-
-    {
-      version: "1.8.15",
-      date: "2025-09-01",
-      features: [
-        "Updated menu structure with AI Agent organization",
-        "Improved welcome message with friendly and professional tone",
-        "Reorganized admin and information commands",
-        "Fixed release dates in version management",
-        "Enhanced user experience with better menu flow",
-      ],
-    },
-
-    {
-      version: "1.8.16",
-      date: "2025-09-01",
-      features: [
-        "Automatic version management system",
-        "Current date updates and build number synchronization",
-        "Version update scripts and documentation",
-        "Professional version management workflow",
-      ],
-    },
-
-    {
-      version: "1.8.17",
-      date: "2025-09-01",
-      features: [
-        "Comprehensive version management documentation",
-        "Automatic milestone tracking",
-        "Git commit count synchronization",
-        "Professional development workflow",
-      ],
-    },
-  ],
-    },
-
-    {
-      version: "1.1.0",
-      date: "2025-08-30",
-      features: [
-        "Albert Heijn receipt processing",
-        "PDF text extraction",
-        "Data validation and error handling",
-        "Multi-file support for WhatsApp webhook",
-      ],
-    },
-
-    {
-      version: "1.2.0",
-      date: "2025-08-31",
-      features: [
-        "Professional invoice processing",
-        "Document type detection",
-        "Enhanced regex patterns",
-        "Koopzegels tracking tab",
-        "Improved Google Sheets styling",
-      ],
-    },
-
-    {
-      version: "1.3.0",
-      date: "2025-09-01",
-      features: [
-        "Admin commands system",
-        "Google Sheets management",
-        "WhatsApp interactive menus",
-        "Comprehensive admin commands for WhatsApp",
-      ],
-    },
-
-    {
-      version: "1.4.0",
-      date: "2025-09-01",
-      features: [
-        "Performance monitoring",
-        "Enhanced user feedback",
-        "Comprehensive testing suite",
-        "100% accuracy for Albert Heijn PDF extraction",
-      ],
-    },
-
-    {
-      version: "1.5.0",
-      date: "2025-09-01",
-      features: [
-        "Multi-file processing",
-        "Advanced error handling",
-        "System status monitoring",
-        "Professional invoice processing for Romslomp",
-      ],
-    },
-
-    {
-      version: "1.6.0",
-      date: "2025-09-01",
-      features: [
-        "Koopzegels tracking",
-        "Detailed invoice breakdown",
-        "Enhanced Google Sheets formatting",
-        "WhatsApp menu fixes and List Message implementation",
-      ],
-    },
-
-    {
-      version: "1.7.0",
-      date: "2025-09-01",
-      features: [
-        "WhatsApp List Message menus",
-        "Professional invoice detection",
-        "Improved user experience",
-        "Enhanced error handling and validation",
-      ],
-    },
-
-    {
-      version: "1.8.0",
-      date: "2025-09-01",
-      features: [
-        "Comprehensive performance monitoring",
-        "Enhanced user feedback system",
-        "Complete integration testing",
-        "Advanced admin commands",
-        "Real-time system status",
-      ],
-    },
-
-    {
-      version: "1.8.13",
-      date: "2025-09-01",
-      features: [
-        "Enhanced WhatsApp menu with professional structure",
-        "Version management system",
-        "Improved user responses",
-        "WhatsApp API error handling",
-        "Message validation and phone number validation",
-      ],
-    },
-
-    {
-      version: "1.8.14",
-      date: "2025-09-01",
-      features: [
-        "Fixed WhatsApp API 400 errors with Button Messages",
-        "Fallback text menu for compatibility",
-        "Admin commands via text interface",
-        "Improved error handling and validation",
-        "Enhanced user experience with reliable messaging",
-      ],
-    },
-
-    {
-      version: "1.8.15",
-      date: "2025-09-01",
-      features: [
-        "Updated menu structure with AI Agent organization",
-        "Improved welcome message with friendly and professional tone",
-        "Reorganized admin and information commands",
-        "Fixed release dates in version management",
-        "Enhanced user experience with better menu flow",
-      ],
-    },
-
-    {
-      version: "1.8.16",
-      date: "2025-09-01",
-      features: [
-        "Automatic version management system",
-        "Current date updates and build number synchronization",
-        "Version update scripts and documentation",
-        "Professional version management workflow",
-      ],
-    },
-
-          {
-        version: "1.8.17",
-        date: "2025-09-01",
-        features: [
-          "Comprehensive version management documentation",
-          "Automatic milestone tracking",
-          "Git commit count synchronization",
-          "Professional development workflow",
-        ],
-      },
-      {
-        version: "1.8.18",
-        date: "2025-09-01",
-        features: [
-          "Fixed version dates based on actual commit history",
-          "Added missing milestones with correct dates",
-          "Updated milestone features based on real development",
-          "Synchronized version management with git history",
-          {
-        version: "1.8.19",
-        date: "2025-09-01",
-        features: [
-          "Auto-generated version update",
-          "Build number: 75",
-          "Release date: 2025-09-01",
-        ],
-      },
-    ],
-      },
-  ],
-    },
-    {
-      version: "1.1.0",
-      date: "2025-09-01",
-      features: [
-        "Albert Heijn receipt processing",
-        "PDF text extraction",
-        "Data validation and error handling",
-      ],
-    },
-    {
-      version: "1.2.0",
-      date: "2025-09-01",
-      features: [
-        "Professional invoice processing",
-        "Document type detection",
-        "Enhanced regex patterns",
-      ],
-    },
-    {
-      version: "1.3.0",
-      date: "2025-09-01",
-      features: [
-        "Admin commands system",
-        "Google Sheets management",
-        "WhatsApp interactive menus",
-      ],
-    },
-    {
-      version: "1.4.0",
-      date: "2025-09-01",
-      features: [
-        "Performance monitoring",
-        "Enhanced user feedback",
-        "Comprehensive testing suite",
-      ],
-    },
-    {
-      version: "1.5.0",
-      date: "2025-09-01",
-      features: [
-        "Multi-file processing",
-        "Advanced error handling",
-        "System status monitoring",
-      ],
-    },
-    {
-      version: "1.6.0",
-      date: "2025-09-01",
-      features: [
-        "Koopzegels tracking",
-        "Detailed invoice breakdown",
-        "Enhanced Google Sheets formatting",
-      ],
-    },
-    {
-      version: "1.7.0",
-      date: "2025-09-01",
-      features: [
-        "WhatsApp List Message menus",
-        "Professional invoice detection",
-        "Improved user experience",
-      ],
-    },
-    {
-      version: "1.8.0",
-      date: "2025-09-01",
-      features: [
-        "Comprehensive performance monitoring",
-        "Enhanced user feedback system",
-        "Complete integration testing",
-        "Advanced admin commands",
-        "Real-time system status",
-      ],
-    },
-    {
-      version: "1.8.13",
-      date: "2025-09-01",
-      features: [
-        "Enhanced WhatsApp menu with professional structure",
-        "Version management system",
-        "Improved user responses",
-        "WhatsApp API error handling",
-        "Message validation and phone number validation",
-      ],
-    },
-    {
-      version: "1.8.14",
-      date: "2025-09-01",
-      features: [
-        "Fixed WhatsApp API 400 errors with Button Messages",
-        "Fallback text menu for compatibility",
-        "Admin commands via text interface",
-        "Improved error handling and validation",
-        "Enhanced user experience with reliable messaging",
-      ],
-    },
-    {
-      version: "1.8.15",
-      date: "2025-09-01",
-      features: [
-        "Updated menu structure with AI Agent organization",
-        "Improved welcome message with friendly and professional tone",
-        "Reorganized admin and information commands",
-        "Fixed release dates in version management",
-        "Enhanced user experience with better menu flow",
+        "Fixed version dates based on actual commit history",
+        "Added missing milestones with correct dates",
+        "Updated milestone features based on real development",
+        "Synchronized version management with git history",
       ],
     },
   ],
@@ -784,7 +193,7 @@ function getCurrentVersion() {
 }
 
 /**
- * Get version information for display
+ * Get detailed version information
  */
 function getVersionInfo() {
   const version = getCurrentVersion();
@@ -804,17 +213,16 @@ function getVersionInfo() {
 }
 
 /**
- * Create version display message for WhatsApp
+ * Create version message for WhatsApp
  */
 function createVersionMessage() {
   const versionInfo = getVersionInfo();
 
-  return `📋 *JMSoft AI Agents - Version Info*
+  return `📋 *JMS AI Agents - Version Info*
 
-🔢 *Version:* ${versionInfo.version}
+🏷️ *Current Version:* ${versionInfo.version}
 📅 *Release Date:* ${versionInfo.releaseDate}
-🏗️ *Build:* ${versionInfo.build}
-📊 *Stage:* ${versionInfo.stage}
+🔢 *Build Number:* ${versionInfo.build}
 
 📈 *Latest Features:*
 ${versionInfo.latestMilestone.features
@@ -822,12 +230,14 @@ ${versionInfo.latestMilestone.features
   .join("\n")}
 
 💡 *Development Progress:*
-• ${versionInfo.major} Major releases
-• ${versionInfo.minor} Minor features
-• ${versionInfo.patch} Bug fixes
-• ${versionInfo.build} Total commits
+• Total Milestones: ${VERSION_HISTORY.milestones.length}
+• Major Features: ${VERSION_HISTORY.major}
+• Minor Enhancements: ${VERSION_HISTORY.minor}
+• Bug Fixes: ${VERSION_HISTORY.patch}
 
-*Powered by JMSoft AI Technology*`;
+🚀 *Development Stage:* ${VERSION_HISTORY.stage.toUpperCase()}
+
+*For more information, visit our documentation or contact support.*`;
 }
 
 /**
@@ -841,8 +251,11 @@ function getDevelopmentStats() {
 
   return {
     totalCommits: VERSION_HISTORY.build,
-    totalFeatures,
     totalMilestones: VERSION_HISTORY.milestones.length,
+    totalFeatures,
+    averageFeaturesPerMilestone: Math.round(
+      totalFeatures / VERSION_HISTORY.milestones.length
+    ),
     majorReleases: VERSION_HISTORY.major,
     minorFeatures: VERSION_HISTORY.minor,
     bugFixes: VERSION_HISTORY.patch,
