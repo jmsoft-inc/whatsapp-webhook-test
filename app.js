@@ -438,6 +438,9 @@ Example: \`/clear\` or \`/delete INV-1234567890-123\`
 *Type een commando om te beginnen!*`;
 
     await sendWhatsAppMessage(from, adminMessage);
+    
+    // Show main menu after admin commands list
+    await showMainMenu(from);
     session.state = "initial";
   } else if (
     text.toLowerCase().includes("setup") ||
