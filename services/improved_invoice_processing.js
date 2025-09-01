@@ -292,7 +292,7 @@ function createFallbackResponse(text, invoiceNumber) {
             // Pattern without item count: SUBTOTAAL:\s*(\d+[.,]\d{2})
             amount = parseFloat(match[1].replace(",", "."));
           }
-          
+
           if (subtotalCount === 1) {
             firstSubtotal = amount;
             console.log(`💰 First subtotal: ${firstSubtotal}`);
@@ -400,7 +400,9 @@ function createFallbackResponse(text, invoiceNumber) {
 
   // Since individual bonus extraction is complex, use voordeel as the total bonus amount
   // This is more reliable as UW VOORDEEL represents the total savings
-  const voordeelMatch = text.match(/UW VOORDEEL:\s*(\d+[.,]\d{2})/i) || text.match(/UW VOORDEEL(\d+[.,]\d{2})/i);
+  const voordeelMatch =
+    text.match(/UW VOORDEEL:\s*(\d+[.,]\d{2})/i) ||
+    text.match(/UW VOORDEEL(\d+[.,]\d{2})/i);
   if (voordeelMatch) {
     bonusTotal = parseFloat(voordeelMatch[1].replace(",", "."));
     console.log(`🎁 Using UW VOORDEEL as total bonus amount: ${bonusTotal}`);

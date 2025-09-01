@@ -21,6 +21,9 @@ const {
   createReceiptFilesList,
 } = require("./services/file_processor");
 
+// Import admin commands
+const { processAdminCommand } = require("./services/admin_commands");
+
 // Import image storage (legacy support)
 const {
   saveReceiptImage,
@@ -200,7 +203,7 @@ async function processInteractiveMessage(message) {
 
 async function processTextMessage(message) {
   const from = message.from;
-  const text = message.text?.body?.toLowerCase().trim();
+  const text = message.text?.body?.trim();
 
   console.log(`🔍 Processing text message from ${from}: "${text}"`);
 
@@ -208,6 +211,25 @@ async function processTextMessage(message) {
     console.log("❌ No text body found in message");
     return;
   }
+
+  // Check for admin commands first (they work in any state)
+  if (text.startsWith("/")) {
+    console.log(`🔧 Admin command detected: "${text}"`);
+    try {
+      const result = await processAdminCommand(text);
+      await sendWhatsAppMessage(from, result.message);
+      
+      // Show main menu after admin command
+      await showMainMenu(from);
+      return;
+    } catch (error) {
+      console.error("❌ Error processing admin command:", error);
+      await sendWhatsAppMessage(from, "❌ Error processing admin command. Try again.");
+      return;
+    }
+  }
+
+  const textLower = text.toLowerCase().trim();
 
   // Get or create user session
   let session = userSessions.get(from);
@@ -224,11 +246,11 @@ async function processTextMessage(message) {
     switch (session.state) {
       case "initial":
         console.log(`🔄 Handling initial state for user ${from}`);
-        await handleInitialState(from, text, session);
+        await handleInitialState(from, textLower, session);
         break;
       case "waiting_for_invoice":
         console.log(`📄 Handling invoice submission for user ${from}`);
-        await handleInvoiceSubmission(from, text, session);
+        await handleInvoiceSubmission(from, textLower, session);
         break;
       default:
         console.log(`⚠️ Unknown state for user ${from}: ${session.state}`);
@@ -285,6 +307,13 @@ async function showMainMenu(from) {
             reply: {
               id: "option_3",
               title: "ℹ️ Info",
+            },
+          },
+          {
+            type: "reply",
+            reply: {
+              id: "option_4",
+              title: "🔧 Admin",
             },
           },
         ],
@@ -363,6 +392,31 @@ Neem contact op via: *JMSoft.com*`;
 
     // Show menu again after info
     await showMainMenu(from);
+    session.state = "initial";
+  } else if (
+    text.includes("4") ||
+    text.includes("optie 4") ||
+    text.includes("admin") ||
+    text === "option_4"
+  ) {
+    // Option 4: Admin Commands
+    const adminMessage = `🔧 *Admin Commands*
+
+Hier zijn de beschikbare admin commando's:
+
+📋 *Available Commands:*
+• \`/clear\` - Clear all data from sheets
+• \`/stats\` - Show sheets statistics  
+• \`/reset\` - Reset headers and formatting
+• \`/delete INV-xxx\` - Delete specific invoice
+• \`/help\` - Show this help
+
+💡 *Usage:* Just type the command in WhatsApp
+Example: \`/clear\` or \`/delete INV-1234567890-123\`
+
+*Type een commando om te beginnen!*`;
+
+    await sendWhatsAppMessage(from, adminMessage);
     session.state = "initial";
   } else if (
     text.toLowerCase().includes("setup") ||
