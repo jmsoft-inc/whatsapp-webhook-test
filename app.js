@@ -316,7 +316,7 @@ async function showMainMenu(from) {
         text: "JMS AI Agents",
       },
       body: {
-        text: "Hallo! 👋 Ik ben je slimme assistent voor documentverwerking en administratie. Ik help je graag met het verwerken van facturen, bonnetjes en andere documenten. Kies hieronder wat je wilt doen! 🚀",
+        text: "Hallo! 👋 Ik ben je slimme assistent voor documentverwerking en administratie. Ik help je graag met het verwerken van facturen, bonnetjes en andere documenten. Kies hieronder wat je wilt doen! 🚀\n\n🤖 AI Agent: Invoice Processor\n📄 Optie 1: Meerdere facturen\n📋 Optie 2: 1 factuur\n\nℹ️ Informatie & Beheer\nℹ️ Optie 3: Informatie\n🔧 Optie 4: Admin (type 'admin')",
       },
       action: {
         buttons: [
