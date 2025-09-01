@@ -12,16 +12,16 @@ const VERSION_HISTORY = {
   minor: 8,
 
   // Bug fixes and patches
-  patch: 14,
+  patch: 15,
 
   // Development stage
   stage: "stable", // 'alpha', 'beta', 'rc', 'stable'
 
   // Build number (git commit count)
-  build: 72,
+  build: 73,
 
   // Release date
-  releaseDate: "2025-01-09",
+  releaseDate: "2025-09-01",
 
   // Development milestones
   milestones: [
@@ -99,7 +99,7 @@ const VERSION_HISTORY = {
     },
     {
       version: "1.8.0",
-      date: "2025-01-09",
+      date: "2025-09-01",
       features: [
         "Comprehensive performance monitoring",
         "Enhanced user feedback system",
@@ -110,7 +110,7 @@ const VERSION_HISTORY = {
     },
     {
       version: "1.8.13",
-      date: "2025-01-09",
+      date: "2025-09-01",
       features: [
         "Enhanced WhatsApp menu with professional structure",
         "Version management system",
@@ -121,13 +121,24 @@ const VERSION_HISTORY = {
     },
     {
       version: "1.8.14",
-      date: "2025-01-09",
+      date: "2025-09-01",
       features: [
         "Fixed WhatsApp API 400 errors with Button Messages",
         "Fallback text menu for compatibility",
         "Admin commands via text interface",
         "Improved error handling and validation",
         "Enhanced user experience with reliable messaging",
+      ],
+    },
+    {
+      version: "1.8.15",
+      date: "2025-09-01",
+      features: [
+        "Updated menu structure with AI Agent organization",
+        "Improved welcome message with friendly and professional tone",
+        "Reorganized admin and information commands",
+        "Fixed release dates in version management",
+        "Enhanced user experience with better menu flow",
       ],
     },
   ],

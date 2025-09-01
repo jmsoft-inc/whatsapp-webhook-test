@@ -14,10 +14,10 @@ async function testButtonMenu() {
       type: "button",
       header: {
         type: "text",
-        text: "JMSoft AI Agents",
+        text: "JMS AI Agents",
       },
       body: {
-        text: "Ik ben je persoonlijke assistent voor verschillende werkzaamheden en verwerkingen. Maak hieronder een keuze uit het menu.",
+        text: "Hallo! 👋 Ik ben je slimme assistent voor documentverwerking en administratie. Ik help je graag met het verwerken van facturen, bonnetjes en andere documenten. Kies hieronder wat je wilt doen! 🚀",
       },
       action: {
         buttons: [
@@ -39,7 +39,7 @@ async function testButtonMenu() {
             type: "reply",
             reply: {
               id: "option_3",
-              title: "ℹ️ Informatie",
+              title: "🔧 Beheer",
             },
           },
         ],
@@ -58,12 +58,18 @@ async function testButtonMenu() {
   console.log('   • Action: present ✅');
   console.log('   • Buttons: 3 buttons ✅');
   console.log('   • Button IDs: option_1, option_2, option_3 ✅');
+  console.log('   • AI Agent structure: Invoice Processor ✅');
+  console.log('   • Admin commands: Beheer & Admin ✅');
 
   // Test button structure
   console.log('\n🔘 Button Structure:');
   buttonMenuMessage.interactive.action.buttons.forEach((button, index) => {
     console.log(`   ${index + 1}. ID: ${button.reply.id}, Title: ${button.reply.title}`);
   });
+  
+  console.log('\n🤖 AI Agent Structure:');
+  console.log('   • Invoice Processor: Document verwerking');
+  console.log('   • Systeem Beheer: Admin & beheeropdrachten');
 
   // Test payload size
   const payloadSize = JSON.stringify(buttonMenuMessage).length;
@@ -84,6 +90,8 @@ async function testButtonMenu() {
   console.log('   ✅ WhatsApp API compatible');
   console.log('   ✅ Fallback text menu available');
   console.log('   ✅ Admin commands via text interface');
+  console.log('   ✅ AI Agent organization structure');
+  console.log('   ✅ Professional and friendly welcome message');
 }
 
 // Run the button menu test

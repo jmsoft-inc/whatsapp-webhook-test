@@ -310,10 +310,10 @@ async function showMainMenu(from) {
       type: "button",
       header: {
         type: "text",
-        text: "JMSoft AI Agents",
+        text: "JMS AI Agents",
       },
       body: {
-        text: "Ik ben je persoonlijke assistent voor verschillende werkzaamheden en verwerkingen. Maak hieronder een keuze uit het menu.",
+        text: "Hallo! 👋 Ik ben je slimme assistent voor documentverwerking en administratie. Ik help je graag met het verwerken van facturen, bonnetjes en andere documenten. Kies hieronder wat je wilt doen! 🚀",
       },
       action: {
         buttons: [
@@ -335,7 +335,7 @@ async function showMainMenu(from) {
             type: "reply",
             reply: {
               id: "option_3",
-              title: "ℹ️ Informatie",
+              title: "🔧 Beheer",
             },
           },
         ],
@@ -350,21 +350,20 @@ async function showMainMenu(from) {
   // Fallback to text menu if interactive message fails
   if (!result) {
     console.log(`📤 Falling back to text menu for user ${from}`);
-    const textMenu = `🎛️ *JMSoft AI Agents Menu*
+    const textMenu = `🎛️ *JMS AI Agents Menu*
 
-Ik ben je persoonlijke assistent voor verschillende werkzaamheden en verwerkingen. Maak hieronder een keuze:
+Hallo! 👋 Ik ben je slimme assistent voor documentverwerking en administratie. Ik help je graag met het verwerken van facturen, bonnetjes en andere documenten. Kies hieronder wat je wilt doen! 🚀
 
+🤖 *AI Agent: Invoice Processor*
 📄 *Optie 1: Meerdere facturen/bonnetjes verwerken*
 Verwerk meerdere documenten tegelijk in batch
 
 📋 *Optie 2: 1 factuur/bonnetje verwerken*
 Verwerk één document individueel
 
-ℹ️ *Optie 3: Informatie*
-Meer informatie over JMSoft AI Agents en versie
-
-🔧 *Admin: Beheer Google Sheets*
-Type 'admin' of '/help' voor beheeropdrachten
+🔧 *Systeem Beheer*
+🔧 *Optie 3: Beheer & Admin*
+Beheer Google Sheets, data en systeem instellingen
 
 *Type het nummer (1, 2, 3) of de tekst van je keuze.*`;
     
@@ -437,10 +436,24 @@ Je kunt nu één document verwerken. Dit is ideaal voor:
   } else if (
     text.includes("3") ||
     text.includes("optie 3") ||
-    text.includes("info") ||
+    text.includes("beheer") ||
+    text.includes("admin") ||
     text === "option_3"
   ) {
-    // Option 3: Information
+    // Option 3: Beheer & Admin
+    const adminMessage = getAdminCommandsList();
+    await sendWhatsAppMessage(from, adminMessage.message);
+
+    // Show menu again after admin info
+    await showMainMenu(from);
+    session.state = "initial";
+  } else if (
+    text.includes("info") ||
+    text.includes("versie") ||
+    text.includes("about") ||
+    text.includes("help")
+  ) {
+    // Information command
     const versionMessage = createVersionMessage();
     await sendWhatsAppMessage(from, versionMessage);
 
