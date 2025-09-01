@@ -334,13 +334,13 @@ async function showMainMenu(from) {
               title: "📋 1 factuur",
             },
           },
-          {
-            type: "reply",
-            reply: {
-              id: "option_3",
-              title: "🔧 Beheer",
+                      {
+              type: "reply",
+              reply: {
+                id: "option_3",
+                title: "ℹ️ Informatie",
+              },
             },
-          },
         ],
       },
     },
@@ -364,11 +364,14 @@ Verwerk meerdere documenten tegelijk in batch
 📋 *Optie 2: 1 factuur/bonnetje verwerken*
 Verwerk één document individueel
 
-🔧 *Systeem Beheer*
-🔧 *Optie 3: Beheer & Admin*
+ℹ️ *Informatie & Beheer*
+ℹ️ *Optie 3: Informatie*
+Meer informatie over JMSoft AI Agents en versie
+
+🔧 *Optie 4: Admin*
 Beheer Google Sheets, data en systeem instellingen
 
-*Type het nummer (1, 2, 3) of de tekst van je keuze.*`;
+*Type het nummer (1, 2, 3, 4) of de tekst van je keuze.*`;
     
     await sendWhatsAppMessage(from, textMenu);
   }
@@ -439,15 +442,15 @@ Je kunt nu één document verwerken. Dit is ideaal voor:
   } else if (
     text.includes("3") ||
     text.includes("optie 3") ||
-    text.includes("beheer") ||
-    text.includes("admin") ||
+    text.includes("informatie") ||
+    text.includes("info") ||
     text === "option_3"
   ) {
-    // Option 3: Beheer & Admin
-    const adminMessage = getAdminCommandsList();
-    await sendWhatsAppMessage(from, adminMessage.message);
+    // Option 3: Informatie
+    const versionMessage = createVersionMessage();
+    await sendWhatsAppMessage(from, versionMessage);
 
-    // Show menu again after admin info
+    // Show menu again after info
     await showMainMenu(from);
     session.state = "initial";
   } else if (
