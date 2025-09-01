@@ -17,7 +17,7 @@ class InvoiceAnalysisLibrary {
     // Initialize configuration
     this.config = {
       openai: {
-        model: "gpt-5",
+        model: "gpt-4o-mini", // Use a more reliable model
         temperature: 0.1,
         maxTokens: 4000,
       },
@@ -167,91 +167,112 @@ class InvoiceAnalysisLibrary {
    * Extract text using OCR
    */
   async extractTextWithOCR(filePath) {
-    // Simulated OCR extraction - in production use Tesseract or cloud OCR
-    const simulatedText = `ALBERT HEIJN
-FILIAAL 1427
-Parijsplein 19
-070-3935033
+    try {
+      console.log(`🔍 Performing OCR extraction on: ${filePath}`);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`❌ File not found: ${filePath}`);
+        return null;
+      }
 
-22/08/2025 12:55
+      // Get file extension
+      const ext = path.extname(filePath).toLowerCase();
+      
+      // For text-based files, read directly
+      if (ext === '.txt' || ext === '.json' || ext === '.csv') {
+        console.log(`📖 Reading text file directly: ${filePath}`);
+        return fs.readFileSync(filePath, 'utf8');
+      }
 
-AANTAL OMSCHRIJVING PRIJS BEDRAG
-BONUSKAART: xx0802
-AIRMILES NR.: xx6254
-1 BOODSCH TAS: 1,59
-1 DZH HV MELK: 1,99
-1 DZH YOGHURT: 2,29
-1 HONING: 2,25
-3 BAPAO: 0,99
-1 DZH CREME FR: 1,09
-1 ZAANSE HOEVE: 2,69 25%
-1 BOTERH WORST: 1,49
-1 SCHOUDERHAM: 1,79
-1 AH ROOMBRIE: 2,99
-1 CHERRYTOMAAT: 1,19
-1 AH SALADE: 3,29 B
-1 AH SALADE: 2,79 B
-1 VRUCHT HAGEL: 2,59
-1 ROZ KREN BOL: 2,69
-2 VOLK BOLLEN: 1,59
-1 DE ICE CARAM: 1,59
-1 APPELFLAP: 1,78 B
+      // For images and PDFs, we need OCR processing
+      // Since we don't have Tesseract installed, we'll use a fallback approach
+      // In production, you would use: const tesseract = require('node-tesseract-ocr');
+      
+      console.log(`🔄 OCR not available, trying alternative extraction for: ${filePath}`);
+      
+      // Try to extract any text content from the file
+      const fileContent = fs.readFileSync(filePath);
+      
+      // Look for text patterns in binary files
+      const textPatterns = fileContent.toString('utf8').match(/[\x20-\x7E\n\r\t]+/g);
+      if (textPatterns && textPatterns.length > 0) {
+        const extractedText = textPatterns.join(' ').trim();
+        if (extractedText.length > 50) {
+          console.log(`✅ Extracted text from file: ${extractedText.length} characters`);
+          return extractedText;
+        }
+      }
 
-21 SUBTOTAAL: 40,24
-
-BONUS AHROOMBOTERA: -0,79
-BONUS AHSALADES175: -2,33
-25% K ZAANSE HOEVE: -0,67
-
-UW VOORDEEL: 3,79
-waarvan BONUS BOX PREMIUM: 0,00
-
-SUBTOTAAL: 36,45
-
-74 KOOPZEGELS PREMIUM: 7,40
-
-TOTAAL: 43,85
-
-6 eSPAARZEGELS PREMIUM
-28 MIJN AH MILES PREMIUM
-
-BETAALD MET:
-PINNEN: 43,85
-
-Totaal betaald: 43,85 EUR
-
-POI: 50282895
-Terminal: 5F2GVM
-Merchant: 1315641
-Periode: 5234
-Transactie: 02286653
-Maestro: A0000000043060
-Bank: ABN AMRO BANK
-Kaart: 673400xxxxxxxxx2056
-Kaartserienummer: 5
-Autorisatiecode: F30005
-Leesmethode: CHIP
-
-BTW OVER EUR
-9%: 31,98 2,88
-21%: 1,31 0,28
-TOTAAL: 33,29 3,16
-
-1427 12:54
-35 41
-22-8-2025
-
-Vragen over je kassabon? Onze collega's helpen je graag`;
-
-    return simulatedText;
+      // If no text found, return null to trigger AI extraction
+      console.log(`⚠️ No text extracted from file, will try AI extraction`);
+      return null;
+      
+    } catch (error) {
+      console.error(`❌ OCR extraction error: ${error.message}`);
+      return null;
+    }
   }
 
   /**
    * Extract text using AI
    */
   async extractTextWithAI(filePath) {
-    // Simulated AI extraction
-    return await this.extractTextWithOCR(filePath);
+    try {
+      console.log(`🤖 Performing AI extraction on: ${filePath}`);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`❌ File not found: ${filePath}`);
+        return null;
+      }
+
+      // For AI extraction, we would typically use OpenAI's Vision API
+      // Since we don't have the API key configured, we'll use file reading as fallback
+      
+      const ext = path.extname(filePath).toLowerCase();
+      
+      // For text files, read directly
+      if (ext === '.txt' || ext === '.json' || ext === '.csv') {
+        console.log(`📖 Reading text file with AI fallback: ${filePath}`);
+        return fs.readFileSync(filePath, 'utf8');
+      }
+
+      // For images and PDFs, try to extract any readable content
+      try {
+        const fileContent = fs.readFileSync(filePath);
+        
+        // Try different encodings
+        const encodings = ['utf8', 'latin1', 'ascii'];
+        
+        for (const encoding of encodings) {
+          try {
+            const decoded = fileContent.toString(encoding);
+            const textMatch = decoded.match(/[\x20-\x7E\n\r\t]{20,}/g);
+            if (textMatch && textMatch.length > 0) {
+              const extractedText = textMatch.join(' ').trim();
+              if (extractedText.length > 50) {
+                console.log(`✅ AI fallback extracted text (${encoding}): ${extractedText.length} characters`);
+                return extractedText;
+              }
+            }
+          } catch (e) {
+            // Try next encoding
+            continue;
+          }
+        }
+      } catch (readError) {
+        console.error(`❌ Error reading file for AI extraction: ${readError.message}`);
+      }
+
+      // If all else fails, return a generic message
+      console.log(`⚠️ AI extraction failed, returning generic text`);
+      return `Document uploaded: ${path.basename(filePath)}\nFile type: ${ext}\nProcessing required for detailed extraction.`;
+      
+    } catch (error) {
+      console.error(`❌ AI extraction error: ${error.message}`);
+      return null;
+    }
   }
 
   /**
@@ -315,6 +336,9 @@ Vragen over je kassabon? Onze collega's helpen je graag`;
       }
     } catch (error) {
       console.error("❌ OpenAI API error:", error.message);
+      if (error.response) {
+        console.error("❌ API Response:", error.response.status, error.response.data);
+      }
       return this.createFallbackAnalysis(text, documentType);
     }
   }
@@ -455,6 +479,7 @@ Vragen over je kassabon? Onze collega's helpen je graag`;
    */
   createFallbackAnalysis(text, documentType) {
     console.log(`📝 Creating fallback analysis for ${documentType}`);
+    console.log(`📄 Extracted text length: ${text ? text.length : 0} characters`);
 
     // Basic pattern matching for common elements
     const analysis = {
@@ -473,7 +498,7 @@ Vragen over je kassabon? Onze collega's helpen je graag`;
       btw_breakdown: this.extractBTWBreakdown(text),
       store_info: this.extractStoreInfo(text),
       bank_info: this.extractBankInfo(text),
-      notes: "Fallback analysis - manual verification recommended",
+      notes: `Fallback analysis - manual verification recommended. Text extracted: ${text ? text.substring(0, 200) + '...' : 'No text'}`,
       raw_text: text,
     };
 
