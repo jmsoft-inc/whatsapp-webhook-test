@@ -13,6 +13,14 @@ const {
   setupGoogleSheetsHeaders,
 } = require("./services/improved_invoice_processing");
 
+// Import professional invoice processing
+const {
+  createProfessionalInvoiceResponse,
+  saveProfessionalInvoiceToSheets,
+  isProfessionalInvoice,
+  isReceipt,
+} = require("./services/professional_invoice_processing");
+
 // Import file processor for multiple file types
 const {
   saveReceiptFile,
@@ -218,13 +226,16 @@ async function processTextMessage(message) {
     try {
       const result = await processAdminCommand(text);
       await sendWhatsAppMessage(from, result.message);
-      
+
       // Show main menu after admin command
       await showMainMenu(from);
       return;
     } catch (error) {
       console.error("❌ Error processing admin command:", error);
-      await sendWhatsAppMessage(from, "❌ Error processing admin command. Try again.");
+      await sendWhatsAppMessage(
+        from,
+        "❌ Error processing admin command. Try again."
+      );
       return;
     }
   }
@@ -518,7 +529,7 @@ async function processFileMessage(message, fileType) {
 
     // Get media info based on file type
     let mediaId, mimeType, fileName;
-    
+
     if (fileType === "image") {
       mediaId = message.image.id;
       mimeType = message.image.mime_type || "image/jpeg";
@@ -549,11 +560,17 @@ async function processFileMessage(message, fileType) {
     }
 
     // Extract text from file
-    const extractedText = await extractTextFromFile(fileResult.filepath, mimeType);
+    const extractedText = await extractTextFromFile(
+      fileResult.filepath,
+      mimeType
+    );
     console.log("📝 Extracted text:", extractedText);
 
     // Check if text extraction failed
-    if (extractedText.includes("PDF Text Extraction Failed") || extractedText.includes("Unsupported file type")) {
+    if (
+      extractedText.includes("PDF Text Extraction Failed") ||
+      extractedText.includes("Unsupported file type")
+    ) {
       await sendWhatsAppMessage(
         from,
         `❌ Kon geen tekst uit het bestand halen.\n\n${extractedText}\n\n💡 Tips:\n• Stuur een screenshot van het bonnetje\n• Zorg dat het bestand leesbaar is\n• Probeer een andere foto van het bonnetje`
@@ -570,20 +587,56 @@ async function processFileMessage(message, fileType) {
       return;
     }
 
-    // Process with improved AI
-    const invoiceData = await processWithAI(extractedText, invoiceNumber);
-    console.log("🤖 AI processed data:", invoiceData);
+    // Determine document type and process accordingly
+    let invoiceData;
+    let documentType = "unknown";
+    
+    if (isProfessionalInvoice(extractedText)) {
+      console.log("📄 Processing as professional invoice...");
+      documentType = "professional_invoice";
+      invoiceData = createProfessionalInvoiceResponse(extractedText, invoiceNumber);
+    } else if (isReceipt(extractedText)) {
+      console.log("🧾 Processing as receipt...");
+      documentType = "receipt";
+      if (OPENAI_API_KEY) {
+        console.log("🤖 Processing with AI...");
+        invoiceData = await processWithAI(extractedText, invoiceNumber);
+      } else {
+        console.log("📝 Using fallback processing...");
+        const { createFallbackResponse } = require("./services/improved_invoice_processing");
+        invoiceData = createFallbackResponse(extractedText, invoiceNumber);
+      }
+    } else {
+      console.log("❓ Unknown document type, trying receipt processing...");
+      documentType = "receipt";
+      if (OPENAI_API_KEY) {
+        console.log("🤖 Processing with AI...");
+        invoiceData = await processWithAI(extractedText, invoiceNumber);
+      } else {
+        console.log("📝 Using fallback processing...");
+        const { createFallbackResponse } = require("./services/improved_invoice_processing");
+        invoiceData = createFallbackResponse(extractedText, invoiceNumber);
+      }
+    }
+
+    console.log(`📄 Document type: ${documentType}`);
+    console.log("📊 Processed data:", invoiceData);
 
     if (!invoiceData) {
       await sendWhatsAppMessage(
         from,
-        "❌ Kon de bonnetje data niet verwerken.\n\n💡 Probeer een andere foto van het bonnetje te sturen."
+        "❌ Kon de document data niet verwerken.\n\n💡 Probeer een andere foto van het document te sturen."
       );
       return;
     }
 
-    // Save detailed data to Google Sheets
-    const saved = await saveDetailedInvoiceToSheets(invoiceData);
+    // Save data to Google Sheets based on document type
+    let saved;
+    if (documentType === "professional_invoice") {
+      saved = await saveProfessionalInvoiceToSheets(invoiceData);
+    } else {
+      saved = await saveDetailedInvoiceToSheets(invoiceData);
+    }
     console.log("💾 Saved to sheets:", saved);
 
     if (!saved) {
@@ -671,7 +724,38 @@ async function sendSingleInvoiceResponse(from, invoiceData, invoiceNumber) {
 async function sendSingleInvoiceSummary(from, invoiceData) {
   const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEETS_SPREADSHEET_ID}/edit`;
 
-  const responseMessage = `🧾 *Factuur Verwerking Voltooid!*
+  // Determine if this is a professional invoice or receipt
+  const isProfessional = invoiceData.document_type === "professional_invoice";
+  
+  let responseMessage;
+  
+  if (isProfessional) {
+    responseMessage = `📄 *Professionele Factuur Verwerking Voltooid!*
+
+🔢 *Factuurnummer:* ${invoiceData.invoice_reference || "Onbekend"}
+🏢 *Bedrijf:* ${invoiceData.company_name || "Onbekend"}
+💰 *Totaalbedrag:* €${invoiceData.total_amount || 0}
+📅 *Factuurdatum:* ${invoiceData.invoice_date || "Onbekend"}
+⏰ *Vervaldatum:* ${invoiceData.due_date || "Onbekend"}
+📊 *Items:* ${invoiceData.items?.length || 0} artikelen
+💳 *Betaalmethode:* ${invoiceData.payment_method || "Factuur"}
+🎯 *BTW Percentage:* ${invoiceData.btw_percentage || 0}%
+
+*Leverancier:*
+• ${invoiceData.supplier_name || "Onbekend"}
+• ${invoiceData.supplier_address || "Onbekend"}
+• ${invoiceData.supplier_phone || "Onbekend"}
+
+✅ *Data opgeslagen in Google Sheets*
+📊 *Bekijk de spreadsheet:* ${sheetUrl}
+
+📋 *Twee tabs beschikbaar:*
+• *Invoices:* Overzicht van alle facturen
+• *Detail Invoices:* Gedetailleerde productinformatie per factuur
+
+*Bedankt voor het gebruik van JMSoft AI Invoice Processor!*`;
+  } else {
+    responseMessage = `🧾 *Bonnetje Verwerking Voltooid!*
 
 🔢 *Factuurnummer:* ${invoiceData.invoice_number || "Onbekend"}
 🏪 *Bedrijf:* ${invoiceData.company || "Onbekend"}
@@ -690,6 +774,7 @@ async function sendSingleInvoiceSummary(from, invoiceData) {
 • *Detail Invoices:* Gedetailleerde productinformatie per factuur
 
 *Bedankt voor het gebruik van JMSoft AI Invoice Processor!*`;
+  }
 
   await sendWhatsAppMessage(from, responseMessage);
 
@@ -883,13 +968,15 @@ async function sendWhatsAppInteractiveMessage(to, message) {
 }
 
 // Test endpoint for debugging
-app.get('/test', async (req, res) => {
-  console.log('🧪 Test endpoint called');
-  
+app.get("/test", async (req, res) => {
+  console.log("🧪 Test endpoint called");
+
   try {
     // Test the createFallbackResponse function
-    const { createFallbackResponse } = require('./services/improved_invoice_processing.js');
-    
+    const {
+      createFallbackResponse,
+    } = require("./services/improved_invoice_processing.js");
+
     const testText = `ALBERT HEIJN
 FILIAAL 1427
 Parijsplein 19
@@ -965,9 +1052,9 @@ TOTAAL: 33,29 3,16
 
 Vragen over je kassabon? Onze collega's helpen je graag`;
 
-    console.log('📝 Testing createFallbackResponse function...');
-    const result = createFallbackResponse(testText, 'TEST001');
-    
+    console.log("📝 Testing createFallbackResponse function...");
+    const result = createFallbackResponse(testText, "TEST001");
+
     // Define expected values based on simplified extraction
     const expected = {
       date: "2025-08-22",
@@ -989,31 +1076,95 @@ Vragen over je kassabon? Onze collega's helpen je graag`;
       terminal: "5F2GVM",
       merchant: "1315641",
       bonuskaart: "xx0802",
-      air_miles: "xx6254"
+      air_miles: "xx6254",
     };
 
     // Test each field
     const tests = [
       { field: "date", expected: expected.date, actual: result.date },
       { field: "time", expected: expected.time, actual: result.time },
-      { field: "subtotal_before_discount", expected: expected.subtotal_before_discount, actual: result.subtotal_before_discount },
-      { field: "subtotal", expected: expected.subtotal, actual: result.subtotal },
+      {
+        field: "subtotal_before_discount",
+        expected: expected.subtotal_before_discount,
+        actual: result.subtotal_before_discount,
+      },
+      {
+        field: "subtotal",
+        expected: expected.subtotal,
+        actual: result.subtotal,
+      },
       { field: "tax_9", expected: expected.tax_9, actual: result.tax_9 },
       { field: "tax_21", expected: expected.tax_21, actual: result.tax_21 },
-      { field: "btw_9_base", expected: expected.btw_9_base, actual: result.btw_breakdown.btw_9_base },
-      { field: "btw_21_base", expected: expected.btw_21_base, actual: result.btw_breakdown.btw_21_base },
-      { field: "bonus_amount", expected: expected.bonus_amount, actual: result.bonus_amount },
-      { field: "voordeel_amount", expected: expected.voordeel_amount, actual: result.voordeel_amount },
-      { field: "koopzegels_amount", expected: expected.koopzegels_amount, actual: result.koopzegels_amount },
-      { field: "koopzegels_count", expected: expected.koopzegels_count, actual: result.koopzegels_count },
-      { field: "total_amount", expected: expected.total_amount, actual: result.total_amount },
-      { field: "payment_pin", expected: expected.payment_pin, actual: result.payment_pin },
-      { field: "item_count", expected: expected.item_count, actual: result.item_count },
-      { field: "transactie", expected: expected.transactie, actual: result.store_info.transactie },
-      { field: "terminal", expected: expected.terminal, actual: result.store_info.terminal },
-      { field: "merchant", expected: expected.merchant, actual: result.store_info.merchant },
-      { field: "bonuskaart", expected: expected.bonuskaart, actual: result.loyalty.bonuskaart },
-      { field: "air_miles", expected: expected.air_miles, actual: result.loyalty.air_miles }
+      {
+        field: "btw_9_base",
+        expected: expected.btw_9_base,
+        actual: result.btw_breakdown.btw_9_base,
+      },
+      {
+        field: "btw_21_base",
+        expected: expected.btw_21_base,
+        actual: result.btw_breakdown.btw_21_base,
+      },
+      {
+        field: "bonus_amount",
+        expected: expected.bonus_amount,
+        actual: result.bonus_amount,
+      },
+      {
+        field: "voordeel_amount",
+        expected: expected.voordeel_amount,
+        actual: result.voordeel_amount,
+      },
+      {
+        field: "koopzegels_amount",
+        expected: expected.koopzegels_amount,
+        actual: result.koopzegels_amount,
+      },
+      {
+        field: "koopzegels_count",
+        expected: expected.koopzegels_count,
+        actual: result.koopzegels_count,
+      },
+      {
+        field: "total_amount",
+        expected: expected.total_amount,
+        actual: result.total_amount,
+      },
+      {
+        field: "payment_pin",
+        expected: expected.payment_pin,
+        actual: result.payment_pin,
+      },
+      {
+        field: "item_count",
+        expected: expected.item_count,
+        actual: result.item_count,
+      },
+      {
+        field: "transactie",
+        expected: expected.transactie,
+        actual: result.store_info.transactie,
+      },
+      {
+        field: "terminal",
+        expected: expected.terminal,
+        actual: result.store_info.terminal,
+      },
+      {
+        field: "merchant",
+        expected: expected.merchant,
+        actual: result.store_info.merchant,
+      },
+      {
+        field: "bonuskaart",
+        expected: expected.bonuskaart,
+        actual: result.loyalty.bonuskaart,
+      },
+      {
+        field: "air_miles",
+        expected: expected.air_miles,
+        actual: result.loyalty.air_miles,
+      },
     ];
 
     let passedTests = 0;
@@ -1027,13 +1178,13 @@ Vragen over je kassabon? Onze collega's helpen je graag`;
         field: test.field,
         expected: test.expected,
         actual: test.actual,
-        passed: isMatch
+        passed: isMatch,
       });
       if (isMatch) passedTests++;
     }
 
     const overallSuccess = passedTests === totalTests;
-    
+
     // Create HTML response
     const html = `
 <!DOCTYPE html>
@@ -1059,18 +1210,24 @@ Vragen over je kassabon? Onze collega's helpen je graag`;
         <p>Testing data extraction from PDF text</p>
     </div>
     
-    <div class="summary ${overallSuccess ? 'success' : 'error'}">
-        ${overallSuccess ? '🎉' : '⚠️'} Overall Result: ${passedTests}/${totalTests} tests passed
+    <div class="summary ${overallSuccess ? "success" : "error"}">
+        ${
+          overallSuccess ? "🎉" : "⚠️"
+        } Overall Result: ${passedTests}/${totalTests} tests passed
     </div>
     
     <h2>Test Results:</h2>
-    ${testResults.map(test => `
-        <div class="test-result ${test.passed ? 'passed' : 'failed'}">
-            <strong>${test.passed ? '✅' : '❌'} ${test.field}:</strong><br>
+    ${testResults
+      .map(
+        (test) => `
+        <div class="test-result ${test.passed ? "passed" : "failed"}">
+            <strong>${test.passed ? "✅" : "❌"} ${test.field}:</strong><br>
             Expected: ${test.expected}<br>
             Actual: ${test.actual}
         </div>
-    `).join('')}
+    `
+      )
+      .join("")}
     
     <div class="raw-data">
         <h3>Raw Extracted Data:</h3>
@@ -1084,29 +1241,30 @@ Vragen over je kassabon? Onze collega's helpen je graag`;
 </body>
 </html>`;
 
-    res.setHeader('Content-Type', 'text/html');
+    res.setHeader("Content-Type", "text/html");
     res.send(html);
-    
   } catch (error) {
-    console.error('❌ Test failed:', error);
+    console.error("❌ Test failed:", error);
     res.status(500).json({
-      error: 'Test failed',
+      error: "Test failed",
       message: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
   }
 });
 
 // Test endpoint for Google Sheets styling
-app.get('/test-styling', async (req, res) => {
-  console.log('🎨 Test styling endpoint called');
-  
+app.get("/test-styling", async (req, res) => {
+  console.log("🎨 Test styling endpoint called");
+
   try {
-    const { setupGoogleSheetsHeaders } = require('./services/improved_invoice_processing.js');
-    
-    console.log('🔄 Testing Google Sheets styling setup...');
+    const {
+      setupGoogleSheetsHeaders,
+    } = require("./services/improved_invoice_processing.js");
+
+    console.log("🔄 Testing Google Sheets styling setup...");
     const result = await setupGoogleSheetsHeaders();
-    
+
     const html = `
 <!DOCTYPE html>
 <html>
@@ -1124,29 +1282,38 @@ app.get('/test-styling', async (req, res) => {
         <h1>🎨 Google Sheets Styling Test</h1>
     </div>
     
-    <div class="${result ? 'success' : 'error'}">
-        <h2>${result ? '✅' : '❌'} Styling Setup Result:</h2>
-        <p>${result ? 'Google Sheets styling was successfully applied!' : 'Failed to apply Google Sheets styling. Check environment variables and permissions.'}</p>
+    <div class="${result ? "success" : "error"}">
+        <h2>${result ? "✅" : "❌"} Styling Setup Result:</h2>
+        <p>${
+          result
+            ? "Google Sheets styling was successfully applied!"
+            : "Failed to apply Google Sheets styling. Check environment variables and permissions."
+        }</p>
     </div>
     
     <h3>Environment Variables Check:</h3>
     <ul>
-        <li>GOOGLE_SHEETS_SPREADSHEET_ID: ${process.env.GOOGLE_SHEETS_SPREADSHEET_ID ? '✅ Set' : '❌ Missing'}</li>
-        <li>GOOGLE_SHEETS_PRIVATE_KEY: ${process.env.GOOGLE_SHEETS_PRIVATE_KEY ? '✅ Set' : '❌ Missing'}</li>
-        <li>GOOGLE_SHEETS_CLIENT_EMAIL: ${process.env.GOOGLE_SHEETS_CLIENT_EMAIL ? '✅ Set' : '❌ Missing'}</li>
+        <li>GOOGLE_SHEETS_SPREADSHEET_ID: ${
+          process.env.GOOGLE_SHEETS_SPREADSHEET_ID ? "✅ Set" : "❌ Missing"
+        }</li>
+        <li>GOOGLE_SHEETS_PRIVATE_KEY: ${
+          process.env.GOOGLE_SHEETS_PRIVATE_KEY ? "✅ Set" : "❌ Missing"
+        }</li>
+        <li>GOOGLE_SHEETS_CLIENT_EMAIL: ${
+          process.env.GOOGLE_SHEETS_CLIENT_EMAIL ? "✅ Set" : "❌ Missing"
+        }</li>
     </ul>
 </body>
 </html>`;
 
-    res.setHeader('Content-Type', 'text/html');
+    res.setHeader("Content-Type", "text/html");
     res.send(html);
-    
   } catch (error) {
-    console.error('❌ Styling test failed:', error);
+    console.error("❌ Styling test failed:", error);
     res.status(500).json({
-      error: 'Styling test failed',
+      error: "Styling test failed",
       message: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
   }
 });

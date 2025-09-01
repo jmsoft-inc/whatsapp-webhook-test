@@ -28,7 +28,7 @@ try {
 async function clearAllSheetsData() {
   try {
     console.log("🧹 Clearing all sheets data...");
-    
+
     const tabs = ["Invoices", "Detail Invoices", "Koopzegels Tracking"];
     const results = [];
 
@@ -46,7 +46,7 @@ async function clearAllSheetsData() {
             spreadsheetId: GOOGLE_SHEETS_SPREADSHEET_ID,
             range: `${tab}!A2:Z`,
           });
-          
+
           results.push(`✅ ${tab}: Data cleared (headers preserved)`);
           console.log(`✅ Cleared data from ${tab}`);
         } else {
@@ -61,13 +61,13 @@ async function clearAllSheetsData() {
     return {
       success: true,
       message: "🧹 **Sheets Data Cleared**\n\n" + results.join("\n"),
-      details: results
+      details: results,
     };
   } catch (error) {
     console.error("❌ Error in clearAllSheetsData:", error);
     return {
       success: false,
-      message: "❌ **Error clearing sheets data**\n\n" + error.message
+      message: "❌ **Error clearing sheets data**\n\n" + error.message,
     };
   }
 }
@@ -78,7 +78,7 @@ async function clearAllSheetsData() {
 async function getSheetsStatistics() {
   try {
     console.log("📊 Getting sheets statistics...");
-    
+
     const tabs = ["Invoices", "Detail Invoices", "Koopzegels Tracking"];
     const stats = [];
 
@@ -89,7 +89,9 @@ async function getSheetsStatistics() {
           range: `${tab}!A:Z`,
         });
 
-        const rowCount = response.data.values ? response.data.values.length - 1 : 0; // Exclude header
+        const rowCount = response.data.values
+          ? response.data.values.length - 1
+          : 0; // Exclude header
         stats.push(`📋 ${tab}: ${rowCount} rows`);
       } catch (error) {
         console.error(`❌ Error getting stats for ${tab}:`, error);
@@ -100,13 +102,13 @@ async function getSheetsStatistics() {
     return {
       success: true,
       message: "📊 **Sheets Statistics**\n\n" + stats.join("\n"),
-      details: stats
+      details: stats,
     };
   } catch (error) {
     console.error("❌ Error in getSheetsStatistics:", error);
     return {
       success: false,
-      message: "❌ **Error getting statistics**\n\n" + error.message
+      message: "❌ **Error getting statistics**\n\n" + error.message,
     };
   }
 }
@@ -117,28 +119,32 @@ async function getSheetsStatistics() {
 async function resetSheetsHeaders() {
   try {
     console.log("🔧 Resetting sheets headers...");
-    
+
     // Import the setup function
-    const { setupGoogleSheetsHeaders } = require("./improved_invoice_processing");
-    
+    const {
+      setupGoogleSheetsHeaders,
+    } = require("./improved_invoice_processing");
+
     const result = await setupGoogleSheetsHeaders();
-    
+
     if (result) {
       return {
         success: true,
-        message: "🔧 **Headers Reset Successfully**\n\n✅ All tabs updated with headers\n✅ Formatting applied\n✅ Columns auto-resized"
+        message:
+          "🔧 **Headers Reset Successfully**\n\n✅ All tabs updated with headers\n✅ Formatting applied\n✅ Columns auto-resized",
       };
     } else {
       return {
         success: false,
-        message: "❌ **Error resetting headers**\n\nCould not complete the operation"
+        message:
+          "❌ **Error resetting headers**\n\nCould not complete the operation",
       };
     }
   } catch (error) {
     console.error("❌ Error in resetSheetsHeaders:", error);
     return {
       success: false,
-      message: "❌ **Error resetting headers**\n\n" + error.message
+      message: "❌ **Error resetting headers**\n\n" + error.message,
     };
   }
 }
@@ -149,7 +155,7 @@ async function resetSheetsHeaders() {
 async function deleteInvoiceByNumber(invoiceNumber) {
   try {
     console.log(`🗑️ Deleting invoice: ${invoiceNumber}`);
-    
+
     // Search in Invoices tab
     const invoicesResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: GOOGLE_SHEETS_SPREADSHEET_ID,
@@ -161,7 +167,8 @@ async function deleteInvoiceByNumber(invoiceNumber) {
 
     if (invoicesResponse.data.values) {
       for (let i = 1; i < invoicesResponse.data.values.length; i++) {
-        if (invoicesResponse.data.values[i][1] === invoiceNumber) { // Invoice number is in column B
+        if (invoicesResponse.data.values[i][1] === invoiceNumber) {
+          // Invoice number is in column B
           rowIndex = i + 1; // Sheets is 1-indexed
           found = true;
           break;
@@ -172,7 +179,7 @@ async function deleteInvoiceByNumber(invoiceNumber) {
     if (!found) {
       return {
         success: false,
-        message: `❌ **Invoice Not Found**\n\nInvoice number "${invoiceNumber}" not found in the sheets.`
+        message: `❌ **Invoice Not Found**\n\nInvoice number "${invoiceNumber}" not found in the sheets.`,
       };
     }
 
@@ -187,12 +194,12 @@ async function deleteInvoiceByNumber(invoiceNumber) {
                 sheetId: 0, // Invoices tab
                 dimension: "ROWS",
                 startIndex: rowIndex - 1,
-                endIndex: rowIndex
-              }
-            }
-          }
-        ]
-      }
+                endIndex: rowIndex,
+              },
+            },
+          },
+        ],
+      },
     });
 
     // Also delete from Detail Invoices tab (search by invoice number)
@@ -204,7 +211,8 @@ async function deleteInvoiceByNumber(invoiceNumber) {
     if (detailResponse.data.values) {
       const rowsToDelete = [];
       for (let i = 1; i < detailResponse.data.values.length; i++) {
-        if (detailResponse.data.values[i][1] === invoiceNumber) { // Invoice number is in column B
+        if (detailResponse.data.values[i][1] === invoiceNumber) {
+          // Invoice number is in column B
           rowsToDelete.push(i + 1);
         }
       }
@@ -221,25 +229,25 @@ async function deleteInvoiceByNumber(invoiceNumber) {
                     sheetId: 1, // Detail Invoices tab
                     dimension: "ROWS",
                     startIndex: rowsToDelete[i] - 1,
-                    endIndex: rowsToDelete[i]
-                  }
-                }
-              }
-            ]
-          }
+                    endIndex: rowsToDelete[i],
+                  },
+                },
+              },
+            ],
+          },
         });
       }
     }
 
     return {
       success: true,
-      message: `🗑️ **Invoice Deleted Successfully**\n\n✅ Invoice "${invoiceNumber}" removed from Invoices tab\n✅ Related detail rows removed from Detail Invoices tab`
+      message: `🗑️ **Invoice Deleted Successfully**\n\n✅ Invoice "${invoiceNumber}" removed from Invoices tab\n✅ Related detail rows removed from Detail Invoices tab`,
     };
   } catch (error) {
     console.error("❌ Error in deleteInvoiceByNumber:", error);
     return {
       success: false,
-      message: "❌ **Error deleting invoice**\n\n" + error.message
+      message: "❌ **Error deleting invoice**\n\n" + error.message,
     };
   }
 }
@@ -254,18 +262,18 @@ function getAdminCommandsList() {
     "📋 *Available Commands:*",
     "",
     "• `/clear` - Clear all data from sheets",
-    "• `/stats` - Show sheets statistics", 
+    "• `/stats` - Show sheets statistics",
     "• `/reset` - Reset headers and formatting",
     "• `/delete INV-xxx` - Delete specific invoice",
     "• `/help` - Show this help",
     "",
     "💡 *Usage:* Just type the command in WhatsApp",
-    "Example: `/clear` or `/delete INV-1234567890-123`"
+    "Example: `/clear` or `/delete INV-1234567890-123`",
   ];
 
   return {
     success: true,
-    message: commands.join("\n")
+    message: commands.join("\n"),
   };
 }
 
@@ -274,26 +282,26 @@ function getAdminCommandsList() {
  */
 async function processAdminCommand(command) {
   const cmd = command.toLowerCase().trim();
-  
+
   console.log(`🔧 Processing admin command: "${command}"`);
 
   try {
     if (cmd === "/clear" || cmd === "clear") {
       return await clearAllSheetsData();
     }
-    
+
     if (cmd === "/stats" || cmd === "stats") {
       return await getSheetsStatistics();
     }
-    
+
     if (cmd === "/reset" || cmd === "reset") {
       return await resetSheetsHeaders();
     }
-    
+
     if (cmd === "/help" || cmd === "help") {
       return getAdminCommandsList();
     }
-    
+
     if (cmd.startsWith("/delete ")) {
       const invoiceNumber = command.substring(8).trim();
       if (invoiceNumber) {
@@ -301,22 +309,23 @@ async function processAdminCommand(command) {
       } else {
         return {
           success: false,
-          message: "❌ **Invalid Command**\n\nUsage: `/delete INV-1234567890-123`"
+          message:
+            "❌ **Invalid Command**\n\nUsage: `/delete INV-1234567890-123`",
         };
       }
     }
-    
+
     // Unknown command
     return {
       success: false,
-      message: "❌ **Unknown Command**\n\nType `/help` to see available commands"
+      message:
+        "❌ **Unknown Command**\n\nType `/help` to see available commands",
     };
-    
   } catch (error) {
     console.error("❌ Error processing admin command:", error);
     return {
       success: false,
-      message: "❌ **Command Error**\n\n" + error.message
+      message: "❌ **Command Error**\n\n" + error.message,
     };
   }
 }
@@ -327,5 +336,5 @@ module.exports = {
   getSheetsStatistics,
   resetSheetsHeaders,
   deleteInvoiceByNumber,
-  getAdminCommandsList
+  getAdminCommandsList,
 };
