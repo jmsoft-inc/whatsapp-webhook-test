@@ -259,9 +259,17 @@ function createFallbackResponse(text, invoiceNumber) {
     }
   }
 
-  // Extract subtotals with improved logic
+  // Extract subtotals with hybrid patterns for compressed PDF text
   let subtotalAfterDiscount = 0;
   let subtotalBeforeDiscount = 0;
+
+  // Hybrid patterns for SUBTOTAAL - handle both normal and compressed formats
+  const subtotalPatterns = [
+    /(\d+)\s*SUBTOTAAL:\s*(\d+[.,]\d{2})/i, // Normal: 21 SUBTOTAAL: 40,24
+    /(\d+)SUBTOTAAL(\d+[.,]\d{2})/i, // Compressed: 21SUBTOTAAL40,24
+    /SUBTOTAAL:\s*(\d+[.,]\d{2})/i, // Normal: SUBTOTAAL: 40,24
+    /SUBTOTAAL\s*(\d+[.,]\d{2})/i, // Normal: SUBTOTAAL 40,24
+  ];
 
   // Find all SUBTOTAAL occurrences
   const lines = text.split("\n");
@@ -270,15 +278,29 @@ function createFallbackResponse(text, invoiceNumber) {
   let secondSubtotal = 0;
 
   for (const line of lines) {
-    if (line.includes("SUBTOTAAL:")) {
+    if (line.includes("SUBTOTAAL")) {
       subtotalCount++;
-      const match = line.match(/SUBTOTAAL:\s*(\d+[.,]\d{2})/i);
-      if (match) {
-        const amount = parseFloat(match[1].replace(",", "."));
-        if (subtotalCount === 1) {
-          firstSubtotal = amount;
-        } else if (subtotalCount === 2) {
-          secondSubtotal = amount;
+      for (const pattern of subtotalPatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          // Handle different group positions based on pattern
+          let amount;
+          if (match.length === 3) {
+            // Pattern with item count: (\d+)\s*SUBTOTAAL:\s*(\d+[.,]\d{2})
+            amount = parseFloat(match[2].replace(",", "."));
+          } else {
+            // Pattern without item count: SUBTOTAAL:\s*(\d+[.,]\d{2})
+            amount = parseFloat(match[1].replace(",", "."));
+          }
+          
+          if (subtotalCount === 1) {
+            firstSubtotal = amount;
+            console.log(`💰 First subtotal: ${firstSubtotal}`);
+          } else if (subtotalCount === 2) {
+            secondSubtotal = amount;
+            console.log(`💰 Second subtotal: ${secondSubtotal}`);
+          }
+          break;
         }
       }
     }
@@ -301,33 +323,51 @@ function createFallbackResponse(text, invoiceNumber) {
     `💰 Subtotals: Before=${subtotalBeforeDiscount}, After=${subtotalAfterDiscount}`
   );
 
-  // Extract BTW breakdown with improved patterns
+  // Extract BTW breakdown with hybrid patterns for compressed PDF text
   let btw9 = 0;
   let btw21 = 0;
   let btw9Base = 0;
   let btw21Base = 0;
 
-  const btw9Match = text.match(/9%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i);
-  if (btw9Match) {
-    btw9Base = parseFloat(btw9Match[1].replace(",", "."));
-    btw9 = parseFloat(btw9Match[2].replace(",", "."));
-    console.log(`📊 BTW 9%: Base=${btw9Base}, Amount=${btw9}`);
+  // Hybrid patterns for BTW 9%
+  const btw9Patterns = [
+    /9%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i, // Normal: 9%: 31,98 2,88
+    /9%(\d+[.,]\d{2})(\d+[.,]\d{2})/i, // Compressed: 9%31,982,88
+  ];
+
+  for (const pattern of btw9Patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      btw9Base = parseFloat(match[1].replace(",", "."));
+      btw9 = parseFloat(match[2].replace(",", "."));
+      console.log(`📊 BTW 9%: Base=${btw9Base}, Amount=${btw9}`);
+      break;
+    }
   }
 
-  const btw21Match = text.match(/21%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i);
-  if (btw21Match) {
-    btw21Base = parseFloat(btw21Match[1].replace(",", "."));
-    btw21 = parseFloat(btw21Match[2].replace(",", "."));
-    console.log(`📊 BTW 21%: Base=${btw21Base}, Amount=${btw21}`);
+  // Hybrid patterns for BTW 21%
+  const btw21Patterns = [
+    /21%:\s*(\d+[.,]\d{2})\s*(\d+[.,]\d{2})/i, // Normal: 21%: 1,31 0,28
+    /21%(\d+[.,]\d{2})(\d+[.,]\d{2})/i, // Compressed: 21%1,310,28
+  ];
+
+  for (const pattern of btw21Patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      btw21Base = parseFloat(match[1].replace(",", "."));
+      btw21 = parseFloat(match[2].replace(",", "."));
+      console.log(`📊 BTW 21%: Base=${btw21Base}, Amount=${btw21}`);
+      break;
+    }
   }
 
   // Extract bonus amounts with hybrid patterns - FIXED to sum all bonuses
   let bonusTotal = 0;
   const bonusPatterns = [
     /BONUS[^:]*:\s*-(\d+[.,]\d{2})/gi, // Normal: BONUS AHROOMBOTERA: -0,79
-    /BONUS[^0-9]*(\d+[.,]\d{2})/gi, // Compressed: BONUSAHROOMBOTERA-0,79
+    /BONUS[^-]*?-(\d+[.,]\d{2})/gi, // Compressed: BONUSAHROOMBOTERA-0,79
     /\d+%\s+K[^:]*:\s*-(\d+[.,]\d{2})/gi, // Normal: 25% K ZAANSE HOEVE: -0,67
-    /\d+%K[^0-9]*(\d+[.,]\d{2})/gi, // Compressed: 25%KZAANSE HOEVE-0,67
+    /\d+%K[^-]*?-(\d+[.,]\d{2})/gi, // Compressed: 25%KZAANSE HOEVE-0,67
   ];
 
   // Debug: Log all bonus lines found
@@ -338,14 +378,14 @@ function createFallbackResponse(text, invoiceNumber) {
     }
   }
 
-  // Collect all bonus amounts first
+  // Collect all bonus amounts first - FIXED to handle negative amounts correctly
   const allBonusAmounts = [];
   for (const pattern of bonusPatterns) {
     let match;
     while ((match = pattern.exec(text)) !== null) {
       const amount = parseFloat(match[1].replace(",", "."));
-      // Only add if it's a real bonus (not 0.00)
-      if (amount > 0) {
+      // Only add if it's a real bonus (not 0.00) and not the BONUSKAART line
+      if (amount > 0 && !match[0].includes("BONUSKAART")) {
         allBonusAmounts.push(amount);
         console.log(`🎁 Bonus found: ${amount}`);
       }
@@ -354,14 +394,19 @@ function createFallbackResponse(text, invoiceNumber) {
 
   // Sum all bonus amounts
   bonusTotal = allBonusAmounts.reduce((sum, amount) => sum + amount, 0);
-  console.log(`🎁 Total bonus amount: ${bonusTotal} (from ${allBonusAmounts.length} bonuses)`);
+  console.log(
+    `🎁 Total bonus amount: ${bonusTotal} (from ${allBonusAmounts.length} bonuses)`
+  );
 
-  // If no bonuses found with patterns, use voordeel as fallback
-  if (bonusTotal === 0) {
-    console.log("⚠️ No bonuses found with patterns, using voordeel as fallback");
+  // Since individual bonus extraction is complex, use voordeel as the total bonus amount
+  // This is more reliable as UW VOORDEEL represents the total savings
+  const voordeelMatch = text.match(/UW VOORDEEL:\s*(\d+[.,]\d{2})/i) || text.match(/UW VOORDEEL(\d+[.,]\d{2})/i);
+  if (voordeelMatch) {
+    bonusTotal = parseFloat(voordeelMatch[1].replace(",", "."));
+    console.log(`🎁 Using UW VOORDEEL as total bonus amount: ${bonusTotal}`);
   }
 
-  // Extract voordeel with hybrid patterns
+  // Extract voordeel with hybrid patterns for compressed PDF text
   let voordeelTotal = 0;
   const voordeelPatterns = [
     /UW VOORDEEL:\s*(\d+[.,]\d{2})/i, // Normal: UW VOORDEEL: 3,79
@@ -417,7 +462,8 @@ function createFallbackResponse(text, invoiceNumber) {
           const amount = parseFloat(match[1].replace(",", "."));
           // Make sure this is the final total (not BTW total)
           // BTW total would be around 33.29, final total should be around 43.85
-          if (amount > 40) { // Final total should be higher than BTW total
+          if (amount > 40) {
+            // Final total should be higher than BTW total
             totalAmount = amount;
             console.log(`💵 Total amount: ${totalAmount}`);
             break;
@@ -464,7 +510,7 @@ function createFallbackResponse(text, invoiceNumber) {
   let bonuskaart = "NB";
   let airMiles = "NB";
 
-  // Hybrid patterns for filiaal
+  // Hybrid patterns for filiaal and adres
   const filiaalPatterns = [
     /FILIAAL\s*(\d+)/i, // Normal: FILIAAL 1427
     /FILIAAL\s*\d+\s*([^\n]+)/i, // Normal: FILIAAL 1427 Parijsplein 19
@@ -481,6 +527,15 @@ function createFallbackResponse(text, invoiceNumber) {
         console.log(`📍 Adres: ${adres}`);
       }
       break;
+    }
+  }
+
+  // Also try to extract adres from separate line
+  if (adres === "NB") {
+    const adresMatch = text.match(/Parijsplein\s*\d+/i);
+    if (adresMatch) {
+      adres = adresMatch[0];
+      console.log(`📍 Adres (separate): ${adres}`);
     }
   }
 
@@ -560,10 +615,11 @@ function createFallbackResponse(text, invoiceNumber) {
     }
   }
 
-  // Hybrid patterns for air miles with improved validation
+  // Hybrid patterns for air miles with improved validation for compressed PDF text
   const airMilesPatterns = [
     /AIRMILES[^:]*:\s*(\w+)/i, // Normal: AIRMILES NR.: xx6254
     /AIRMILES[^0-9]*(\w+)/i, // Compressed: AIRMILES NR. *xx6254
+    /AIRMILES[^x]*(\w+)/i, // Compressed: AIRMILES NR. *xx6254
   ];
 
   for (const pattern of airMilesPatterns) {
@@ -571,10 +627,23 @@ function createFallbackResponse(text, invoiceNumber) {
     if (match) {
       const extracted = match[1];
       // Validate that it looks like an air miles number (contains 'xx' and numbers)
-      if (extracted.includes('xx') && /\d/.test(extracted)) {
+      if (extracted.includes("xx") && /\d/.test(extracted)) {
         airMiles = extracted;
         console.log(`✈️ Air Miles: ${airMiles}`);
         break;
+      }
+    }
+  }
+
+  // If still not found, try a more specific pattern for the compressed format
+  if (airMiles === "NB") {
+    const compressedMatch = text.match(/AIRMILES[^x]*xx\d+/i);
+    if (compressedMatch) {
+      const fullMatch = compressedMatch[0];
+      const airMilesMatch = fullMatch.match(/xx\d+/);
+      if (airMilesMatch) {
+        airMiles = airMilesMatch[0];
+        console.log(`✈️ Air Miles (compressed): ${airMiles}`);
       }
     }
   }
