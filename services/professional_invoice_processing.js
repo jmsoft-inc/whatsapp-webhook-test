@@ -47,7 +47,7 @@ function createProfessionalInvoiceResponse(text, invoiceNumber) {
     items: [],
     notes: "NB",
     document_type: "professional_invoice",
-    processing_method: "Professional invoice extraction - AI not available"
+    processing_method: "Professional invoice extraction - AI not available",
   };
 
   try {
@@ -64,66 +64,94 @@ function createProfessionalInvoiceResponse(text, invoiceNumber) {
     }
 
     // Extract supplier address
-    const addressMatch = text.match(/(?:Hoog-Harnasch|Praagsingel)\s+\d+[^\n]*/i);
+    const addressMatch = text.match(
+      /(?:Hoog-Harnasch|Praagsingel)\s+\d+[^\n]*/i
+    );
     if (addressMatch) {
       response.supplier_address = addressMatch[0].trim();
       console.log(`📍 Address: ${response.supplier_address}`);
     }
 
     // Extract phone number
-    const phoneMatch = text.match(/Tel\.:\s*([^\n]+)/i) || text.match(/\+31[^\n]*/i);
+    const phoneMatch =
+      text.match(/Tel\.:\s*([^\n]+)/i) || text.match(/\+31[^\n]*/i);
     if (phoneMatch) {
-      response.supplier_phone = phoneMatch[1] ? phoneMatch[1].trim() : phoneMatch[0].trim();
+      response.supplier_phone = phoneMatch[1]
+        ? phoneMatch[1].trim()
+        : phoneMatch[0].trim();
       console.log(`📞 Phone: ${response.supplier_phone}`);
     }
 
     // Extract email
-    const emailMatch = text.match(/E-mail:\s*([^\n]+)/i) || text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i);
+    const emailMatch =
+      text.match(/E-mail:\s*([^\n]+)/i) ||
+      text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i);
     if (emailMatch) {
-      response.supplier_email = emailMatch[1] ? emailMatch[1].trim() : emailMatch[0].trim();
+      response.supplier_email = emailMatch[1]
+        ? emailMatch[1].trim()
+        : emailMatch[0].trim();
       console.log(`📧 Email: ${response.supplier_email}`);
     }
 
     // Extract website
-    const websiteMatch = text.match(/Website:\s*([^\n]+)/i) || text.match(/www\.[^\s]+/i);
+    const websiteMatch =
+      text.match(/Website:\s*([^\n]+)/i) || text.match(/www\.[^\s]+/i);
     if (websiteMatch) {
-      response.supplier_website = websiteMatch[1] ? websiteMatch[1].trim() : websiteMatch[0].trim();
+      response.supplier_website = websiteMatch[1]
+        ? websiteMatch[1].trim()
+        : websiteMatch[0].trim();
       console.log(`🌐 Website: ${response.supplier_website}`);
     }
 
     // Extract BTW number
-    const btwMatch = text.match(/Btw-nummer:\s*([^\n]+)/i) || text.match(/NL\d{9}[A-Z]\d{2}/i);
+    const btwMatch =
+      text.match(/Btw-nummer:\s*([^\n]+)/i) || text.match(/NL\d{9}[A-Z]\d{2}/i);
     if (btwMatch) {
-      response.supplier_btw = btwMatch[1] ? btwMatch[1].trim() : btwMatch[0].trim();
+      response.supplier_btw = btwMatch[1]
+        ? btwMatch[1].trim()
+        : btwMatch[0].trim();
       console.log(`🏛️ BTW: ${response.supplier_btw}`);
     }
 
     // Extract KVK number
-    const kvkMatch = text.match(/KVK-nummer:\s*([^\n]+)/i) || text.match(/\d{8}/i);
+    const kvkMatch =
+      text.match(/KVK-nummer:\s*([^\n]+)/i) || text.match(/\d{8}/i);
     if (kvkMatch) {
-      response.supplier_kvk = kvkMatch[1] ? kvkMatch[1].trim() : kvkMatch[0].trim();
+      response.supplier_kvk = kvkMatch[1]
+        ? kvkMatch[1].trim()
+        : kvkMatch[0].trim();
       console.log(`📋 KVK: ${response.supplier_kvk}`);
     }
 
     // Extract IBAN
-    const ibanMatch = text.match(/IBAN:\s*([^\n]+)/i) || text.match(/NL\d{2}\s*[A-Z]{4}\s*\d{4}\s*\d{4}\s*\d{2}/i);
+    const ibanMatch =
+      text.match(/IBAN:\s*([^\n]+)/i) ||
+      text.match(/NL\d{2}\s*[A-Z]{4}\s*\d{4}\s*\d{4}\s*\d{2}/i);
     if (ibanMatch) {
-      response.supplier_iban = ibanMatch[1] ? ibanMatch[1].trim() : ibanMatch[0].trim();
+      response.supplier_iban = ibanMatch[1]
+        ? ibanMatch[1].trim()
+        : ibanMatch[0].trim();
       console.log(`🏦 IBAN: ${response.supplier_iban}`);
     }
 
     // Extract BIC
-    const bicMatch = text.match(/BIC:\s*([^\n]+)/i) || text.match(/[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?/i);
+    const bicMatch =
+      text.match(/BIC:\s*([^\n]+)/i) ||
+      text.match(/[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?/i);
     if (bicMatch) {
-      response.supplier_bic = bicMatch[1] ? bicMatch[1].trim() : bicMatch[0].trim();
+      response.supplier_bic = bicMatch[1]
+        ? bicMatch[1].trim()
+        : bicMatch[0].trim();
       console.log(`🏦 BIC: ${response.supplier_bic}`);
     }
 
     // Extract invoice date
-    const invoiceDateMatch = text.match(/Factuurdatum:\s*(\d{2}\/\d{2}\/\d{4})/i);
+    const invoiceDateMatch = text.match(
+      /Factuurdatum:\s*(\d{2}\/\d{2}\/\d{4})/i
+    );
     if (invoiceDateMatch) {
       const dateStr = invoiceDateMatch[1];
-      const [day, month, year] = dateStr.split('/');
+      const [day, month, year] = dateStr.split("/");
       response.invoice_date = `${year}-${month}-${day}`;
       console.log(`📅 Invoice date: ${response.invoice_date}`);
     }
@@ -132,7 +160,7 @@ function createProfessionalInvoiceResponse(text, invoiceNumber) {
     const dueDateMatch = text.match(/Vervaldatum:\s*(\d{2}\/\d{2}\/\d{4})/i);
     if (dueDateMatch) {
       const dateStr = dueDateMatch[1];
-      const [day, month, year] = dateStr.split('/');
+      const [day, month, year] = dateStr.split("/");
       response.due_date = `${year}-${month}-${day}`;
       console.log(`⏰ Due date: ${response.due_date}`);
     }
@@ -152,16 +180,24 @@ function createProfessionalInvoiceResponse(text, invoiceNumber) {
     }
 
     // Extract customer address - look for the customer address after customer name
-    const textLines = text.split('\n');
+    const textLines = text.split("\n");
     let customerAddressFound = false;
     for (let i = 0; i < textLines.length; i++) {
-      if (textLines[i].includes('T.a.v.') && i + 1 < textLines.length) {
+      if (textLines[i].includes("T.a.v.") && i + 1 < textLines.length) {
         // Look for address in next few lines
         for (let j = i + 1; j < Math.min(i + 5, textLines.length); j++) {
           const line = textLines[j].trim();
-          if (line && !line.includes('Btw-nummer') && !line.includes('KVK-nummer') && 
-              !line.includes('Tel.') && !line.includes('E-mail') && !line.includes('Website') &&
-              !line.includes('IBAN') && !line.includes('BIC') && !line.includes('Factuurdatum')) {
+          if (
+            line &&
+            !line.includes("Btw-nummer") &&
+            !line.includes("KVK-nummer") &&
+            !line.includes("Tel.") &&
+            !line.includes("E-mail") &&
+            !line.includes("Website") &&
+            !line.includes("IBAN") &&
+            !line.includes("BIC") &&
+            !line.includes("Factuurdatum")
+          ) {
             // This might be the customer address
             if (line.match(/^\d{4}[A-Z]{2}\s+[A-Za-z\s-]+$/)) {
               response.customer_address = line;
@@ -177,27 +213,39 @@ function createProfessionalInvoiceResponse(text, invoiceNumber) {
 
     // If no customer address found, try to find it in the text
     if (!customerAddressFound) {
-      const customerAddressMatch = text.match(/(?:Praagsingel|Hoog-Harnasch)\s+\d+[^\n]*/i);
+      const customerAddressMatch = text.match(
+        /(?:Praagsingel|Hoog-Harnasch)\s+\d+[^\n]*/i
+      );
       if (customerAddressMatch) {
         response.customer_address = customerAddressMatch[0].trim();
-        console.log(`📍 Customer address (fallback): ${response.customer_address}`);
+        console.log(
+          `📍 Customer address (fallback): ${response.customer_address}`
+        );
       }
     }
 
     // Extract amounts
-    const subtotalMatch = text.match(/Totaalbedrag excl\. btw[^\d]*(\d+[.,]\d{2})/i);
+    const subtotalMatch = text.match(
+      /Totaalbedrag excl\. btw[^\d]*(\d+[.,]\d{2})/i
+    );
     if (subtotalMatch) {
-      response.subtotal_excl_btw = parseFloat(subtotalMatch[1].replace(",", "."));
+      response.subtotal_excl_btw = parseFloat(
+        subtotalMatch[1].replace(",", ".")
+      );
       console.log(`💰 Subtotal excl BTW: ${response.subtotal_excl_btw}`);
     }
 
-    const btwAmountMatch = text.match(/Btw hoog[^€]*€\s*(\d+[.,]\d{2})/i) || text.match(/Btw hoog[^\d]*(\d+[.,]\d{2})/i);
+    const btwAmountMatch =
+      text.match(/Btw hoog[^€]*€\s*(\d+[.,]\d{2})/i) ||
+      text.match(/Btw hoog[^\d]*(\d+[.,]\d{2})/i);
     if (btwAmountMatch) {
       response.btw_amount = parseFloat(btwAmountMatch[1].replace(",", "."));
       console.log(`🏛️ BTW amount: ${response.btw_amount}`);
     }
 
-    const totalMatch = text.match(/Totaalbedrag incl\. btw[^\d]*(\d+[.,]\d{2})/i);
+    const totalMatch = text.match(
+      /Totaalbedrag incl\. btw[^\d]*(\d+[.,]\d{2})/i
+    );
     if (totalMatch) {
       response.total_amount = parseFloat(totalMatch[1].replace(",", "."));
       console.log(`💶 Total amount: ${response.total_amount}`);
@@ -205,45 +253,58 @@ function createProfessionalInvoiceResponse(text, invoiceNumber) {
 
     // Calculate BTW percentage
     if (response.subtotal_excl_btw > 0 && response.btw_amount > 0) {
-      response.btw_percentage = Math.round((response.btw_amount / response.subtotal_excl_btw) * 100);
+      response.btw_percentage = Math.round(
+        (response.btw_amount / response.subtotal_excl_btw) * 100
+      );
       console.log(`📊 BTW percentage: ${response.btw_percentage}%`);
     }
 
     // Extract items - look for the items section
-    const itemLines = text.split('\n');
+    const itemLines = text.split("\n");
     for (let i = 0; i < itemLines.length; i++) {
       const line = itemLines[i].trim();
       // Look for item pattern: quantity + description + price excl + price incl
-      const itemMatch = line.match(/^(\d+)([^€]+)€\s*(\d+[.,]\d{2})€\s*(\d+[.,]\d{2})$/i);
+      const itemMatch = line.match(
+        /^(\d+)([^€]+)€\s*(\d+[.,]\d{2})€\s*(\d+[.,]\d{2})$/i
+      );
       if (itemMatch) {
         const item = {
           quantity: parseInt(itemMatch[1]),
           description: itemMatch[2].trim(),
           price_excl_btw: parseFloat(itemMatch[3].replace(",", ".")),
-          price_incl_btw: parseFloat(itemMatch[4].replace(",", "."))
+          price_incl_btw: parseFloat(itemMatch[4].replace(",", ".")),
         };
         response.items.push(item);
-        console.log(`📦 Item: ${item.quantity}x ${item.description} - €${item.price_excl_btw} excl BTW`);
+        console.log(
+          `📦 Item: ${item.quantity}x ${item.description} - €${item.price_excl_btw} excl BTW`
+        );
       }
     }
 
     // Extract payment terms
-    const paymentMatch = text.match(/Gelieve dit bedrag[^€]*€\s*([^,]+)[^0-9]*(\d{2}\/\d{2}\/\d{4})/i);
+    const paymentMatch = text.match(
+      /Gelieve dit bedrag[^€]*€\s*([^,]+)[^0-9]*(\d{2}\/\d{2}\/\d{4})/i
+    );
     if (paymentMatch) {
-      response.payment_terms = `€${paymentMatch[1].trim()} due ${paymentMatch[2]}`;
+      response.payment_terms = `€${paymentMatch[1].trim()} due ${
+        paymentMatch[2]
+      }`;
       console.log(`💳 Payment terms: ${response.payment_terms}`);
     } else {
       // Try alternative pattern
-      const altPaymentMatch = text.match(/€\s*(\d+[.,]\d{2})[^0-9]*(\d{2}\/\d{2}\/\d{4})/i);
+      const altPaymentMatch = text.match(
+        /€\s*(\d+[.,]\d{2})[^0-9]*(\d{2}\/\d{2}\/\d{4})/i
+      );
       if (altPaymentMatch) {
-        response.payment_terms = `€${altPaymentMatch[1].trim()} due ${altPaymentMatch[2]}`;
+        response.payment_terms = `€${altPaymentMatch[1].trim()} due ${
+          altPaymentMatch[2]
+        }`;
         console.log(`💳 Payment terms (alt): ${response.payment_terms}`);
       }
     }
 
     console.log("✅ Professional invoice processing completed");
     return response;
-
   } catch (error) {
     console.error("❌ Error processing professional invoice:", error);
     return response;
@@ -330,7 +391,9 @@ async function saveProfessionalInvoiceToSheets(invoiceData) {
 
     // Save detailed items to Detail Invoices tab
     if (invoiceData.items && invoiceData.items.length > 0) {
-      console.log(`📝 Saving ${invoiceData.items.length} items to Detail Invoices tab`);
+      console.log(
+        `📝 Saving ${invoiceData.items.length} items to Detail Invoices tab`
+      );
 
       const detailRows = invoiceData.items.map((item) => [
         new Date().toISOString(), // Timestamp
@@ -377,7 +440,10 @@ async function saveProfessionalInvoiceToSheets(invoiceData) {
     console.log("✅ Successfully saved professional invoice to Google Sheets");
     return true;
   } catch (error) {
-    console.error("❌ Error saving professional invoice to Google Sheets:", error);
+    console.error(
+      "❌ Error saving professional invoice to Google Sheets:",
+      error
+    );
     return false;
   }
 }
@@ -395,10 +461,12 @@ function isProfessionalInvoice(text) {
     /IBAN:/i,
     /BIC:/i,
     /Totaalbedrag excl\. btw/i,
-    /Totaalbedrag incl\. btw/i
+    /Totaalbedrag incl\. btw/i,
   ];
 
-  const matchCount = professionalIndicators.filter(indicator => indicator.test(text)).length;
+  const matchCount = professionalIndicators.filter((indicator) =>
+    indicator.test(text)
+  ).length;
   return matchCount >= 3; // At least 3 indicators suggest professional invoice
 }
 
@@ -414,10 +482,12 @@ function isReceipt(text) {
     /BONUSKAART/i,
     /AIRMILES/i,
     /PINNEN/i,
-    /BTW OVER EUR/i
+    /BTW OVER EUR/i,
   ];
 
-  const matchCount = receiptIndicators.filter(indicator => indicator.test(text)).length;
+  const matchCount = receiptIndicators.filter((indicator) =>
+    indicator.test(text)
+  ).length;
   return matchCount >= 3; // At least 3 indicators suggest receipt
 }
 
@@ -425,5 +495,5 @@ module.exports = {
   createProfessionalInvoiceResponse,
   saveProfessionalInvoiceToSheets,
   isProfessionalInvoice,
-  isReceipt
+  isReceipt,
 };

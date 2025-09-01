@@ -240,6 +240,13 @@ async function processTextMessage(message) {
     }
   }
 
+  // Special case for help command from specific user
+  if (from === "31639591370" && text.toLowerCase().trim() === "help") {
+    console.log(`🔧 Help command from admin user ${from}`);
+    await showMainMenu(from);
+    return;
+  }
+
   const textLower = text.toLowerCase().trim();
 
   // Get or create user session
@@ -289,7 +296,7 @@ async function showMainMenu(from) {
     to: from,
     type: "interactive",
     interactive: {
-      type: "button",
+      type: "list",
       header: {
         type: "text",
         text: "🧾 AI Invoice Processor",
@@ -298,34 +305,37 @@ async function showMainMenu(from) {
         text: "Ik kan je helpen met het verwerken van facturen en bonnetjes. Kies een optie:",
       },
       action: {
-        buttons: [
+        button: "Menu openen",
+        sections: [
           {
-            type: "reply",
-            reply: {
-              id: "option_1",
-              title: "📄 Meerdere facturen",
-            },
+            title: "Factuur Verwerking",
+            rows: [
+              {
+                id: "option_1",
+                title: "📄 Meerdere facturen",
+                description: "Verwerk meerdere facturen tegelijk",
+              },
+              {
+                id: "option_2",
+                title: "📋 1 factuur",
+                description: "Verwerk één factuur",
+              },
+            ],
           },
           {
-            type: "reply",
-            reply: {
-              id: "option_2",
-              title: "📋 1 factuur",
-            },
-          },
-          {
-            type: "reply",
-            reply: {
-              id: "option_3",
-              title: "ℹ️ Info",
-            },
-          },
-          {
-            type: "reply",
-            reply: {
-              id: "option_4",
-              title: "🔧 Admin",
-            },
+            title: "Informatie & Beheer",
+            rows: [
+              {
+                id: "option_3",
+                title: "ℹ️ Info",
+                description: "Meer informatie over JMSoft AI Agents",
+              },
+              {
+                id: "option_4",
+                title: "🔧 Admin",
+                description: "Beheer Google Sheets en data",
+              },
+            ],
           },
         ],
       },
@@ -464,7 +474,7 @@ Example: \`/clear\` or \`/delete INV-1234567890-123\`
   } else if (
     text.includes("menu") ||
     text.includes("terug") ||
-    text.includes("help")
+    text.toLowerCase() === "help"
   ) {
     // Show main menu
     await showMainMenu(from);
@@ -590,11 +600,14 @@ async function processFileMessage(message, fileType) {
     // Determine document type and process accordingly
     let invoiceData;
     let documentType = "unknown";
-    
+
     if (isProfessionalInvoice(extractedText)) {
       console.log("📄 Processing as professional invoice...");
       documentType = "professional_invoice";
-      invoiceData = createProfessionalInvoiceResponse(extractedText, invoiceNumber);
+      invoiceData = createProfessionalInvoiceResponse(
+        extractedText,
+        invoiceNumber
+      );
     } else if (isReceipt(extractedText)) {
       console.log("🧾 Processing as receipt...");
       documentType = "receipt";
@@ -603,7 +616,9 @@ async function processFileMessage(message, fileType) {
         invoiceData = await processWithAI(extractedText, invoiceNumber);
       } else {
         console.log("📝 Using fallback processing...");
-        const { createFallbackResponse } = require("./services/improved_invoice_processing");
+        const {
+          createFallbackResponse,
+        } = require("./services/improved_invoice_processing");
         invoiceData = createFallbackResponse(extractedText, invoiceNumber);
       }
     } else {
@@ -614,7 +629,9 @@ async function processFileMessage(message, fileType) {
         invoiceData = await processWithAI(extractedText, invoiceNumber);
       } else {
         console.log("📝 Using fallback processing...");
-        const { createFallbackResponse } = require("./services/improved_invoice_processing");
+        const {
+          createFallbackResponse,
+        } = require("./services/improved_invoice_processing");
         invoiceData = createFallbackResponse(extractedText, invoiceNumber);
       }
     }
@@ -726,9 +743,9 @@ async function sendSingleInvoiceSummary(from, invoiceData) {
 
   // Determine if this is a professional invoice or receipt
   const isProfessional = invoiceData.document_type === "professional_invoice";
-  
+
   let responseMessage;
-  
+
   if (isProfessional) {
     responseMessage = `📄 *Professionele Factuur Verwerking Voltooid!*
 
