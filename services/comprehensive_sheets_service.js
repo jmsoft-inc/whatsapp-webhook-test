@@ -365,6 +365,53 @@ class ComprehensiveSheetsService {
         resource: { values: [rowData] }
       });
 
+      // Set row formatting to prevent auto-enlargement of notes column
+      try {
+        const lastRow = await this.getLastRow("Comprehensive Analysis");
+        if (lastRow > 0) {
+          await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.spreadsheetId,
+            resource: {
+              requests: [
+                {
+                  updateDimensionProperties: {
+                    range: {
+                      sheetId: await this.getSheetId("Comprehensive Analysis"),
+                      dimension: "ROWS",
+                      startIndex: lastRow - 1,
+                      endIndex: lastRow
+                    },
+                    properties: {
+                      pixelSize: 100 // Fixed row height
+                    },
+                    fields: "pixelSize"
+                  }
+                },
+                {
+                  repeatCell: {
+                    range: {
+                      sheetId: await this.getSheetId("Comprehensive Analysis"),
+                      startRowIndex: lastRow - 1,
+                      endRowIndex: lastRow,
+                      startColumnIndex: 52, // Notes column (AZ)
+                      endColumnIndex: 53
+                    },
+                    cell: {
+                      userEnteredFormat: {
+                        wrapStrategy: "CLIP" // Prevent text wrapping
+                      }
+                    },
+                    fields: "userEnteredFormat.wrapStrategy"
+                  }
+                }
+              ]
+            }
+          });
+        }
+      } catch (formatError) {
+        console.log("⚠️ Could not set row formatting:", formatError.message);
+      }
+
       console.log("✅ Saved to comprehensive analysis tab");
       return true;
       
@@ -445,6 +492,41 @@ class ComprehensiveSheetsService {
     } catch (error) {
       console.error(`❌ Error ensuring headers for ${tabName}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Get the last row number for a tab
+   */
+  async getLastRow(tabName) {
+    try {
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: `${tabName}!A:A`
+      });
+      
+      const values = response.data.values || [];
+      return values.length;
+    } catch (error) {
+      console.error(`❌ Error getting last row for ${tabName}:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get the sheet ID for a tab
+   */
+  async getSheetId(tabName) {
+    try {
+      const response = await this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId
+      });
+      
+      const sheet = response.data.sheets.find(s => s.properties.title === tabName);
+      return sheet ? sheet.properties.sheetId : null;
+    } catch (error) {
+      console.error(`❌ Error getting sheet ID for ${tabName}:`, error);
+      return null;
     }
   }
 

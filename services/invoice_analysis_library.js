@@ -356,16 +356,38 @@ class InvoiceAnalysisLibrary {
         return analysis;
       } catch (parseError) {
         console.error("❌ Failed to parse AI response as JSON:", parseError);
-        // Try to extract JSON from the response
+        
+        // Try to extract JSON from markdown code blocks first
+        const jsonCodeBlockMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonCodeBlockMatch) {
+          try {
+            const extractedJson = jsonCodeBlockMatch[1].trim();
+            return JSON.parse(extractedJson);
+          } catch (codeBlockError) {
+            console.error("❌ Failed to parse JSON from code block:", codeBlockError);
+          }
+        }
+        
+        // Try to extract JSON from regular code blocks
+        const codeBlockMatch = aiResponse.match(/```\s*([\s\S]*?)\s*```/);
+        if (codeBlockMatch) {
+          try {
+            const extractedJson = codeBlockMatch[1].trim();
+            return JSON.parse(extractedJson);
+          } catch (codeBlockError) {
+            console.error("❌ Failed to parse JSON from code block:", codeBlockError);
+          }
+        }
+        
+        // Try to extract JSON using regex
         const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
-            return JSON.parse(jsonMatch[0]);
+            // Clean the JSON string by removing control characters
+            const cleanedJson = jsonMatch[0].replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+            return JSON.parse(cleanedJson);
           } catch (secondParseError) {
-            console.error(
-              "❌ Failed to parse extracted JSON:",
-              secondParseError
-            );
+            console.error("❌ Failed to parse extracted JSON:", secondParseError);
           }
         }
 
@@ -396,6 +418,8 @@ class InvoiceAnalysisLibrary {
     const systemPrompt = `Je bent een expert in het analyseren van alle soorten facturen, bonnetjes en documenten.
     
     Analyseer het document zeer gedetailleerd en extraheer ALLE beschikbare informatie in JSON formaat.
+    
+    BELANGRIJK: Geef ALTIJD een geldige JSON response zonder markdown formatting. Gebruik geen \`\`\`json of \`\`\` code blocks.
     
     Gebruik deze uitgebreide JSON structuur:
     {
@@ -740,7 +764,12 @@ class InvoiceAnalysisLibrary {
         const line = lines[i].trim();
         if (line && !line.match(/^\d/) && line.length > 2) {
           // Check if it looks like a company name
-          if (line.match(/[A-Z][A-Z\s]+/) || line.includes("HEIJN") || line.includes("JUMBO") || line.includes("LIDL")) {
+          if (
+            line.match(/[A-Z][A-Z\s]+/) ||
+            line.includes("HEIJN") ||
+            line.includes("JUMBO") ||
+            line.includes("LIDL")
+          ) {
             companyInfo.name = line;
             break;
           }
@@ -912,10 +941,14 @@ class InvoiceAnalysisLibrary {
     }
 
     // Extract koopzegels
-    const koopzegelsMatch = text.match(/(\d+)\s+KOOPZEGELS\s+PREMIUM:\s*(\d+[.,]\d{2})/i);
+    const koopzegelsMatch = text.match(
+      /(\d+)\s+KOOPZEGELS\s+PREMIUM:\s*(\d+[.,]\d{2})/i
+    );
     if (koopzegelsMatch) {
       financialInfo.koopzegels_count = parseInt(koopzegelsMatch[1]);
-      financialInfo.koopzegels_amount = parseFloat(koopzegelsMatch[2].replace(",", "."));
+      financialInfo.koopzegels_amount = parseFloat(
+        koopzegelsMatch[2].replace(",", ".")
+      );
     }
 
     // Extract payment method

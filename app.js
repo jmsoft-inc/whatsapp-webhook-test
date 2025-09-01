@@ -182,6 +182,12 @@ async function processWebhookEvent(body) {
   }
   console.log("✅ Messaging product is whatsapp");
 
+  // Filter out status updates - only process actual user messages
+  if (changes.value.statuses) {
+    console.log("📊 Status update received, ignoring:", changes.value.statuses.length, "statuses");
+    return;
+  }
+
   const messages = changes.value.messages;
   if (!messages) {
     console.log("❌ No messages found in changes");
@@ -876,7 +882,7 @@ async function sendMultipleInvoicesSummary(from, session) {
     const date = invoice.transaction_info?.date || "Onbekend";
     const items = invoice.item_summary?.total_items || 0;
     const payment = invoice.financial_info?.payment_method || "Onbekend";
-    
+
     responseMessage += `\n\n*Document ${docNum}:*
 🏪 ${company}
 💰 €${amount}
@@ -1365,20 +1371,6 @@ app.listen(PORT, async () => {
   console.log(`WhatsApp Webhook server running on port ${PORT}`);
   console.log(`Webhook URL: https://your-app-name.onrender.com`);
   console.log(`Verify Token: ${verifyToken}`);
-
-  // Clear Google Sheets on startup (redeploy)
-  try {
-    console.log("🧹 Clearing Google Sheets on redeploy...");
-    const { clearAllSheetsData } = require("./services/admin_commands");
-    const clearResult = await clearAllSheetsData();
-    if (clearResult.success) {
-      console.log("✅ Google Sheets cleared successfully on redeploy");
-    } else {
-      console.log("⚠️ Failed to clear Google Sheets on redeploy:", clearResult.message);
-    }
-  } catch (error) {
-    console.error("❌ Error clearing Google Sheets on redeploy:", error);
-  }
 
   // Setup Google Sheets headers on startup
   try {
