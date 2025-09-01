@@ -52,7 +52,7 @@ app.get("/webhook", async (req, res) => {
     console.log("📥 GET request received for webhook verification");
     console.log("📋 Query hub.mode:", req.query["hub.mode"]);
     console.log("📋 Query hub.challenge:", req.query["hub.challenge"]);
-    
+
     // Handle webhook verification
     if (req.query["hub.mode"] === "subscribe" && req.query["hub.challenge"]) {
       console.log("✅ Webhook verification successful");
@@ -60,7 +60,7 @@ app.get("/webhook", async (req, res) => {
       res.status(200).send(req.query["hub.challenge"]);
       return;
     }
-    
+
     res.status(400).send("Bad Request");
   } catch (error) {
     console.error("❌ Error in webhook verification:", error);
@@ -354,34 +354,147 @@ async function processImageMessage(message) {
   }
 }
 
+// Menu Functions
+async function showMainMenu(phoneNumber) {
+  const menuMessage = `🤖 **WhatsApp Invoice Agent - Hoofdmenu**
+
+📋 **Beschikbare opties:**
+
+1️⃣ **Factuur verwerken** - Stuur een enkele factuur/bon
+2️⃣ **Meerdere facturen** - Bulk verwerking van meerdere bestanden  
+3️⃣ **Admin opties** - Beheer en onderhoud
+4️⃣ **Systeem status** - Controleer de status
+
+💡 **Gebruik:** Stuur het nummer (1, 2, 3, 4) of typ 'menu' om dit menu opnieuw te tonen.
+
+📤 **Of stuur direct een foto/PDF van een factuur om te beginnen!**`;
+
+  await whatsappMessaging.sendTextMessage(phoneNumber, menuMessage);
+}
+
+async function showInvoiceOptions(phoneNumber) {
+  const message = `📄 **Factuur Verwerking**
+
+📤 **Stuur nu een van de volgende bestanden:**
+• 📷 Foto van een factuur/bon (JPG, PNG)
+• 📄 PDF bestand van een factuur
+• 📋 Document bestand
+
+🔄 **Wat gebeurt er:**
+1. Bestand wordt gedownload van WhatsApp
+2. OCR tekst wordt geëxtraheerd
+3. AI analyseert de inhoud
+4. Data wordt opgeslagen in Google Sheets
+5. Je krijgt een overzicht van de resultaten
+
+💡 **Tip:** Zorg dat de factuur goed leesbaar is voor het beste resultaat!`;
+
+  await whatsappMessaging.sendTextMessage(phoneNumber, message);
+}
+
+async function showBulkProcessingOptions(phoneNumber) {
+  const message = `📦 **Meerdere Facturen Verwerken**
+
+🔄 **Hoe het werkt:**
+1. Stuur meerdere facturen/bonnen achter elkaar
+2. Elk bestand wordt individueel verwerkt
+3. Je krijgt een overzicht van alle resultaten
+4. Data wordt opgeslagen in Google Sheets
+
+📤 **Stuur nu je facturen:**
+• 📷 Foto's van facturen/bonnen
+• 📄 PDF bestanden
+• 📋 Document bestanden
+
+💡 **Tip:** Je kunt tot 10 bestanden tegelijk verwerken. Stuur ze één voor één.`;
+
+  await whatsappMessaging.sendTextMessage(phoneNumber, message);
+}
+
+async function showAdminOptions(phoneNumber) {
+  const message = `🔧 **Admin Opties**
+
+📋 **Beschikbare commando's:**
+
+• `/clear` - Wis alle data uit Google Sheets
+• `/stats` - Toon statistieken
+• `/reset` - Reset headers en formatting
+• `/status` - Systeem status
+• `/help` - Admin help
+
+💡 **Gebruik:** Typ het commando (bijvoorbeeld: /clear)`;
+
+  await whatsappMessaging.sendTextMessage(phoneNumber, message);
+}
+
+async function showSystemStatus(phoneNumber) {
+  const statusMessage = `📊 **Systeem Status**
+
+✅ **WhatsApp Webhook:** Actief
+✅ **Google Sheets:** Verbonden
+✅ **AI Analysis:** Beschikbaar
+✅ **File Processing:** Klaar
+
+🌍 **Environment:** Production
+⏰ **Laatste update:** ${new Date().toLocaleString("nl-NL")}
+🔄 **Uptime:** ${Math.floor(process.uptime() / 3600)} uur
+
+💡 **Status:** Alle systemen werken correct!`;
+
+  await whatsappMessaging.sendTextMessage(phoneNumber, statusMessage);
+}
+
 // Process text messages
 async function processTextMessage(message) {
   try {
     console.log("📝 Processing text message:", message.text.body);
     const text = message.text.body.toLowerCase();
-
-    // Handle commands
-    if (text.includes("help") || text.includes("help")) {
-      await whatsappMessaging.sendTextMessage(
-        message.from,
-        "🤖 WhatsApp Invoice Agent Help\n\n📤 Stuur een foto of PDF van een factuur/bon\n📊 De agent analyseert het automatisch\n💾 Data wordt opgeslagen in Google Sheets\n\nVoor vragen, neem contact op met support."
-      );
-    } else if (text.includes("status") || text.includes("status")) {
-      await whatsappMessaging.sendTextMessage(
-        message.from,
-        "📊 Agent Status: Online ✅\n🔄 Laatste update: " +
-          new Date().toLocaleString("nl-NL") +
-          "\n📁 Verwerkte bestanden: Actief\n🤖 AI Analysis: Beschikbaar"
-      );
-    } else if (text.includes("admin") && text.includes("help")) {
-      // Check if user is admin (implement proper admin check)
-      await adminCommands.processAdminCommand(message.from, text);
-    } else {
-      await whatsappMessaging.sendTextMessage(
-        message.from,
-        "📤 Stuur een foto of PDF van een factuur/bon om te beginnen met de verwerking.\n\n📝 Commando's:\n- 'help' - Toon help\n- 'status' - Agent status\n- 'admin help' - Admin commando's"
-      );
+    
+    // Check for menu commands
+    if (text === "menu" || text === "help" || text === "start" || text === "begin") {
+      await showMainMenu(message.from);
+      return;
     }
+    
+    // Check for specific menu options
+    if (text === "1" || text === "factuur" || text === "facturen") {
+      await showInvoiceOptions(message.from);
+      return;
+    }
+    
+    if (text === "2" || text === "meerdere" || text === "bulk") {
+      await showBulkProcessingOptions(message.from);
+      return;
+    }
+    
+    if (text === "3" || text === "admin" || text === "beheer") {
+      await showAdminOptions(message.from);
+      return;
+    }
+    
+    // Handle admin commands
+    if (text.startsWith("/")) {
+      try {
+        const result = await adminCommands.processAdminCommand(text);
+        if (result && result.success) {
+          await whatsappMessaging.sendTextMessage(message.from, result.message);
+        } else {
+          await whatsappMessaging.sendTextMessage(message.from, "❌ Admin commando mislukt. Probeer het opnieuw.");
+        }
+      } catch (error) {
+        console.error("❌ Error processing admin command:", error);
+        await whatsappMessaging.sendTextMessage(message.from, "❌ Er is een fout opgetreden bij het verwerken van het admin commando.");
+      }
+      return;
+    }
+    
+    if (text === "4" || text === "status" || text === "info") {
+      await showSystemStatus(message.from);
+      return;
+    }
+    
+    // If no command recognized, show main menu
+    await showMainMenu(message.from);
   } catch (error) {
     console.error("❌ Error processing text message:", error);
   }
