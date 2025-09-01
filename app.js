@@ -92,6 +92,9 @@ const sheetsService = new ComprehensiveSheetsService();
 // User session management
 const userSessions = new Map();
 
+// Duplicate detection cache
+const processedDocuments = new Map(); // Store document fingerprints to prevent duplicates
+
 // Route for GET requests (webhook verification)
 app.get("/", (req, res) => {
   res.send("WhatsApp Webhook is running!");
@@ -154,6 +157,119 @@ app.post("/", async (req, res) => {
   }
 });
 
+/**
+ * Create a fingerprint for a document to detect duplicates
+ */
+function createDocumentFingerprint(extractedText, documentType) {
+  try {
+    // Normalize text: remove whitespace, convert to lowercase
+    const normalizedText = extractedText
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Extract key identifying information
+    const fingerprint = {
+      // Look for company names
+      company: extractCompanyFromText(normalizedText),
+      // Look for dates
+      date: extractDateFromText(normalizedText),
+      // Look for total amounts
+      totalAmount: extractTotalAmountFromText(normalizedText),
+      // Document type
+      documentType: documentType,
+      // Hash of normalized text (first 500 chars for performance)
+      textHash: require('crypto').createHash('md5').update(normalizedText.substring(0, 500)).digest('hex')
+    };
+    
+    return fingerprint;
+  } catch (error) {
+    console.error('❌ Error creating document fingerprint:', error);
+    return null;
+  }
+}
+
+/**
+ * Extract company name from text
+ */
+function extractCompanyFromText(text) {
+  const companies = ['albert heijn', 'ah', 'jumbo', 'lidl', 'studiekosten', 'rompslomp'];
+  for (const company of companies) {
+    if (text.includes(company)) {
+      return company;
+    }
+  }
+  return 'unknown';
+}
+
+/**
+ * Extract date from text
+ */
+function extractDateFromText(text) {
+  const datePatterns = [
+    /(\d{4})-(\d{2})-(\d{2})/g,  // YYYY-MM-DD
+    /(\d{2})-(\d{2})-(\d{4})/g,  // DD-MM-YYYY
+    /(\d{2})\/(\d{2})\/(\d{4})/g, // DD/MM/YYYY
+    /(\d{1,2})\s+(jan|feb|mar|apr|mei|jun|jul|aug|sep|okt|nov|dec)\s+(\d{4})/gi // DD MMM YYYY
+  ];
+  
+  for (const pattern of datePatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return match[0];
+    }
+  }
+  return 'unknown';
+}
+
+/**
+ * Extract total amount from text
+ */
+function extractTotalAmountFromText(text) {
+  const amountPattern = /€?\s*(\d+[.,]\d{2})/g;
+  const amounts = text.match(amountPattern);
+  if (amounts && amounts.length > 0) {
+    // Convert to number and find the largest (likely total)
+    const numericAmounts = amounts.map(amt => parseFloat(amt.replace(/[€,\s]/g, '').replace(',', '.')));
+    return Math.max(...numericAmounts);
+  }
+  return 0;
+}
+
+/**
+ * Check if document is a duplicate
+ */
+function isDuplicateDocument(fingerprint, userPhone) {
+  try {
+    const key = `${userPhone}_${fingerprint.company}_${fingerprint.date}_${fingerprint.totalAmount}_${fingerprint.textHash}`;
+    
+    // Check if we've seen this exact document before
+    if (processedDocuments.has(key)) {
+      console.log(`🔄 Duplicate document detected: ${fingerprint.company} ${fingerprint.date} €${fingerprint.totalAmount}`);
+      return true;
+    }
+    
+    // Store this document fingerprint
+    processedDocuments.set(key, {
+      timestamp: Date.now(),
+      fingerprint: fingerprint
+    });
+    
+    // Clean up old entries (older than 1 hour)
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    for (const [docKey, docData] of processedDocuments.entries()) {
+      if (docData.timestamp < oneHourAgo) {
+        processedDocuments.delete(docKey);
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('❌ Error checking for duplicates:', error);
+    return false;
+  }
+}
+
 async function processWebhookEvent(body) {
   console.log("🔄 processWebhookEvent called");
 
@@ -184,7 +300,11 @@ async function processWebhookEvent(body) {
 
   // Filter out status updates - only process actual user messages
   if (changes.value.statuses) {
-    console.log("📊 Status update received, ignoring:", changes.value.statuses.length, "statuses");
+    console.log(
+      "📊 Status update received, ignoring:",
+      changes.value.statuses.length,
+      "statuses"
+    );
     return;
   }
 
@@ -664,6 +784,17 @@ async function processFileMessage(message, fileType) {
       mimeType
     );
     console.log("📝 Extracted text:", extractedText);
+
+    // Check for duplicate documents
+    const documentFingerprint = createDocumentFingerprint(extractedText, fileType);
+    if (documentFingerprint && isDuplicateDocument(documentFingerprint, from)) {
+      console.log("🔄 Duplicate document detected, skipping processing");
+      await sendWhatsAppMessage(
+        from,
+        `🔄 Dit document is al eerder verwerkt:\n\n📄 ${documentFingerprint.company}\n📅 ${documentFingerprint.date}\n💰 €${documentFingerprint.totalAmount}\n\nStuur een ander document of typ 'klaar' om af te ronden.`
+      );
+      return;
+    }
 
     // Check if text extraction failed
     if (
