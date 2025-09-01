@@ -39,6 +39,7 @@ const {
 const {
   processAdminCommand,
   getAdminCommandsList,
+  clearAllSheetsData,
 } = require("./services/admin_commands");
 
 // Import version management
@@ -852,7 +853,12 @@ async function sendMultipleInvoicesSummary(from, session) {
     if (invoice.company_info?.name) companies.add(invoice.company_info.name);
   });
 
-  const responseMessage = `📊 *Meerdere Documenten Verwerking Voltooid!*
+  // Limit to maximum 4 documents for WhatsApp response
+  const maxDocuments = 4;
+  const documentsToShow = session.invoices.slice(0, maxDocuments);
+  const remainingCount = Math.max(0, session.invoices.length - maxDocuments);
+
+  let responseMessage = `📊 *Meerdere Documenten Verwerking Voltooid!*
 
 📄 *Aantal documenten:* ${session.invoices.length}
 🏪 *Bedrijven:* ${Array.from(companies).join(", ") || "Onbekend"}
@@ -860,7 +866,30 @@ async function sendMultipleInvoicesSummary(from, session) {
 📊 *Totaal items:* ${totalItems}
 📅 *Verwerkt op:* ${new Date().toLocaleDateString("nl-NL")}
 
-✅ *Alle data opgeslagen in Google Sheets*
+📋 *Belangrijkste Eigenschappen (max ${maxDocuments}):*`;
+
+  // Add key properties for each document (max 4)
+  documentsToShow.forEach((invoice, index) => {
+    const docNum = index + 1;
+    const company = invoice.company_info?.name || "Onbekend";
+    const amount = invoice.financial_info?.total_amount || 0;
+    const date = invoice.transaction_info?.date || "Onbekend";
+    const items = invoice.item_summary?.total_items || 0;
+    const payment = invoice.financial_info?.payment_method || "Onbekend";
+    
+    responseMessage += `\n\n*Document ${docNum}:*
+🏪 ${company}
+💰 €${amount}
+📅 ${date}
+📊 ${items} items
+💳 ${payment}`;
+  });
+
+  if (remainingCount > 0) {
+    responseMessage += `\n\n*... en nog ${remainingCount} documenten meer*`;
+  }
+
+  responseMessage += `\n\n✅ *Alle data opgeslagen in Google Sheets*
 📊 *Bekijk de spreadsheet:* ${sheetUrl}
 
 📈 *Batch #${Date.now()}*
@@ -1336,6 +1365,20 @@ app.listen(PORT, async () => {
   console.log(`WhatsApp Webhook server running on port ${PORT}`);
   console.log(`Webhook URL: https://your-app-name.onrender.com`);
   console.log(`Verify Token: ${verifyToken}`);
+
+  // Clear Google Sheets on startup (redeploy)
+  try {
+    console.log("🧹 Clearing Google Sheets on redeploy...");
+    const { clearAllSheetsData } = require("./services/admin_commands");
+    const clearResult = await clearAllSheetsData();
+    if (clearResult.success) {
+      console.log("✅ Google Sheets cleared successfully on redeploy");
+    } else {
+      console.log("⚠️ Failed to clear Google Sheets on redeploy:", clearResult.message);
+    }
+  } catch (error) {
+    console.error("❌ Error clearing Google Sheets on redeploy:", error);
+  }
 
   // Setup Google Sheets headers on startup
   try {

@@ -27,7 +27,7 @@ class InvoiceAnalysisLibrary {
       },
       processing: {
         maxFileSize: 10 * 1024 * 1024, // 10MB
-        timeout: 30000,
+        timeout: 60000, // Increased from 30000 to 60000 (60 seconds)
       },
     };
   }
@@ -312,14 +312,20 @@ class InvoiceAnalysisLibrary {
 
       // Check if text is too large for OpenAI API (limit to ~150k tokens for gpt-4o-mini)
       const maxTextLength = 100000; // Conservative limit
-      
+
       if (text && text.length > maxTextLength) {
-        console.log(`⚠️ Text too large (${text.length} chars), creating summary for AI analysis`);
+        console.log(
+          `⚠️ Text too large (${text.length} chars), creating summary for AI analysis`
+        );
         text = await this.createTextSummary(text, maxTextLength);
         console.log(`📝 Summary text length: ${text.length} characters`);
       }
 
-      const { system, user } = this.createAnalysisPrompt(text, documentType, options);
+      const { system, user } = this.createAnalysisPrompt(
+        text,
+        documentType,
+        options
+      );
 
       const response = await axios.post(
         "https://api.openai.com/v1/chat/completions",
@@ -356,17 +362,28 @@ class InvoiceAnalysisLibrary {
           try {
             return JSON.parse(jsonMatch[0]);
           } catch (secondParseError) {
-            console.error("❌ Failed to parse extracted JSON:", secondParseError);
+            console.error(
+              "❌ Failed to parse extracted JSON:",
+              secondParseError
+            );
           }
         }
-        
+
         // If all parsing fails, create enhanced fallback
-        return this.createEnhancedFallbackAnalysis(text, documentType, aiResponse);
+        return this.createEnhancedFallbackAnalysis(
+          text,
+          documentType,
+          aiResponse
+        );
       }
     } catch (error) {
       console.error("❌ OpenAI API error:", error.message);
       if (error.response) {
-        console.error("❌ API Response:", error.response.status, error.response.data);
+        console.error(
+          "❌ API Response:",
+          error.response.status,
+          error.response.data
+        );
       }
       return this.createEnhancedFallbackAnalysis(text, documentType, null);
     }
@@ -508,7 +525,9 @@ class InvoiceAnalysisLibrary {
    */
   createFallbackAnalysis(text, documentType) {
     console.log(`📝 Creating fallback analysis for ${documentType}`);
-    console.log(`📄 Extracted text length: ${text ? text.length : 0} characters`);
+    console.log(
+      `📄 Extracted text length: ${text ? text.length : 0} characters`
+    );
 
     // Basic pattern matching for common elements
     const analysis = {
@@ -541,11 +560,13 @@ class InvoiceAnalysisLibrary {
    */
   createEnhancedFallbackAnalysis(text, documentType, aiResponse = null) {
     console.log(`📝 Creating enhanced fallback analysis for ${documentType}`);
-    console.log(`📄 Extracted text length: ${text ? text.length : 0} characters`);
+    console.log(
+      `📄 Extracted text length: ${text ? text.length : 0} characters`
+    );
 
     // Extract document-specific patterns
     const patterns = this.extractDocumentPatterns(text);
-    
+
     const analysis = {
       document_info: {
         type: documentType,
@@ -573,7 +594,7 @@ class InvoiceAnalysisLibrary {
    */
   extractDocumentPatterns(text) {
     if (!text) return {};
-    
+
     const patterns = {
       hasDate: /\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/.test(text),
       hasTime: /\d{1,2}:\d{2}/.test(text),
@@ -584,7 +605,7 @@ class InvoiceAnalysisLibrary {
       hasStoreInfo: /filiaal|kassa|medewerker|employee/i.test(text),
       hasPaymentInfo: /pin|kaart|card|contant|cash/i.test(text),
     };
-    
+
     return patterns;
   }
 
@@ -593,9 +614,9 @@ class InvoiceAnalysisLibrary {
    */
   createEnhancedNotes(text, documentType, patterns, aiResponse) {
     const notes = [];
-    
+
     notes.push(`Enhanced fallback analysis for ${documentType}`);
-    
+
     if (patterns.hasDate) notes.push("✓ Date detected");
     if (patterns.hasTime) notes.push("✓ Time detected");
     if (patterns.hasAmount) notes.push("✓ Amounts detected");
@@ -604,17 +625,18 @@ class InvoiceAnalysisLibrary {
     if (patterns.hasItems) notes.push("✓ Items detected");
     if (patterns.hasStoreInfo) notes.push("✓ Store info detected");
     if (patterns.hasPaymentInfo) notes.push("✓ Payment info detected");
-    
+
     if (text) {
-      const textPreview = text.length > 200 ? text.substring(0, 200) + "..." : text;
+      const textPreview =
+        text.length > 200 ? text.substring(0, 200) + "..." : text;
       notes.push(`Text preview: ${textPreview}`);
       notes.push(`Full text length: ${text.length} characters`);
     }
-    
+
     if (aiResponse) {
       notes.push(`AI response available but not parseable`);
     }
-    
+
     return notes.join(" | ");
   }
 
@@ -712,11 +734,17 @@ class InvoiceAnalysisLibrary {
       iban: "NB",
     };
 
-    // Extract company name (usually first line)
+    // Extract company name (look for company names in first few lines)
     if (lines.length > 0) {
-      const firstLine = lines[0].trim();
-      if (firstLine && !firstLine.match(/^\d/)) {
-        companyInfo.name = firstLine;
+      for (let i = 0; i < Math.min(5, lines.length); i++) {
+        const line = lines[i].trim();
+        if (line && !line.match(/^\d/) && line.length > 2) {
+          // Check if it looks like a company name
+          if (line.match(/[A-Z][A-Z\s]+/) || line.includes("HEIJN") || line.includes("JUMBO") || line.includes("LIDL")) {
+            companyInfo.name = line;
+            break;
+          }
+        }
       }
     }
 
@@ -724,6 +752,12 @@ class InvoiceAnalysisLibrary {
     const phoneMatch = text.match(/(\d{3}-\d{7}|\d{10})/);
     if (phoneMatch) {
       companyInfo.phone = phoneMatch[1];
+    }
+
+    // Extract address (look for lines with street patterns)
+    const addressMatch = text.match(/([A-Z][a-z]+\s+\d+[A-Z]?)/);
+    if (addressMatch) {
+      companyInfo.address = addressMatch[1];
     }
 
     return companyInfo;
@@ -832,6 +866,8 @@ class InvoiceAnalysisLibrary {
       /TOTAAL:\s*(\d+[.,]\d{2})/i,
       /Totaal:\s*(\d+[.,]\d{2})/i,
       /Totaal betaald:\s*(\d+[.,]\d{2})/i,
+      /€\s*(\d+[.,]\d{2})/i,
+      /EUR\s*(\d+[.,]\d{2})/i,
     ];
 
     for (const pattern of totalPatterns) {
@@ -869,6 +905,19 @@ class InvoiceAnalysisLibrary {
       financialInfo.tax_21 = parseFloat(btw21Match[2].replace(",", "."));
     }
 
+    // Extract bonus amount
+    const bonusMatch = text.match(/BONUS\s+(\w+):\s*-?(\d+[.,]\d{2})/i);
+    if (bonusMatch) {
+      financialInfo.bonus_amount = parseFloat(bonusMatch[2].replace(",", "."));
+    }
+
+    // Extract koopzegels
+    const koopzegelsMatch = text.match(/(\d+)\s+KOOPZEGELS\s+PREMIUM:\s*(\d+[.,]\d{2})/i);
+    if (koopzegelsMatch) {
+      financialInfo.koopzegels_count = parseInt(koopzegelsMatch[1]);
+      financialInfo.koopzegels_amount = parseFloat(koopzegelsMatch[2].replace(",", "."));
+    }
+
     // Extract payment method
     if (text.includes("PINNEN")) {
       financialInfo.payment_method = "PIN";
@@ -876,6 +925,10 @@ class InvoiceAnalysisLibrary {
       if (pinMatch) {
         financialInfo.payment_pin = parseFloat(pinMatch[1].replace(",", "."));
       }
+    } else if (text.includes("CONTANT")) {
+      financialInfo.payment_method = "CONTANT";
+    } else if (text.includes("KAART")) {
+      financialInfo.payment_method = "KAART";
     }
 
     return financialInfo;
@@ -1190,11 +1243,11 @@ class InvoiceAnalysisLibrary {
 
     // Try to keep the most important parts (beginning and end)
     const startLength = Math.floor(maxLength * 0.6); // 60% from start
-    const endLength = Math.floor(maxLength * 0.4);   // 40% from end
-    
+    const endLength = Math.floor(maxLength * 0.4); // 40% from end
+
     const start = text.substring(0, startLength);
     const end = text.substring(text.length - endLength);
-    
+
     return `${start}\n\n[... truncated for AI processing ...]\n\n${end}`;
   }
 
@@ -1208,15 +1261,15 @@ class InvoiceAnalysisLibrary {
 
     try {
       console.log(`📝 Creating summary of large text (${text.length} chars)`);
-      
+
       // Extract key information patterns
       const summary = this.extractKeyInformation(text);
-      
+
       // If summary is still too long, truncate it
       if (summary.length > maxLength) {
         return this.truncateTextForAI(summary, maxLength);
       }
-      
+
       return summary;
     } catch (error) {
       console.error("❌ Error creating text summary:", error);
@@ -1228,9 +1281,9 @@ class InvoiceAnalysisLibrary {
    * Extract key information from text for summarization
    */
   extractKeyInformation(text) {
-    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    const lines = text.split("\n").filter((line) => line.trim().length > 0);
     const keyLines = [];
-    
+
     // Look for lines with important patterns
     const importantPatterns = [
       /totaal|total|sum|eindtotaal/i,
@@ -1241,25 +1294,31 @@ class InvoiceAnalysisLibrary {
       /filiaal|kassa|medewerker|employee/i,
       /pin|kaart|card|contant|cash/i,
       /bonuskaart|air miles|loyalty/i,
-      /albert heijn|jumbo|lidl|aldi|etos|kruidvat/i
+      /albert heijn|jumbo|lidl|aldi|etos|kruidvat/i,
     ];
-    
+
     for (const line of lines) {
-      const isImportant = importantPatterns.some(pattern => pattern.test(line));
+      const isImportant = importantPatterns.some((pattern) =>
+        pattern.test(line)
+      );
       if (isImportant) {
         keyLines.push(line);
       }
     }
-    
+
     // If we found important lines, use them
     if (keyLines.length > 0) {
-      return `Key Information:\n${keyLines.join('\n')}\n\nFull Text Length: ${text.length} characters`;
+      return `Key Information:\n${keyLines.join("\n")}\n\nFull Text Length: ${
+        text.length
+      } characters`;
     }
-    
+
     // Otherwise, use first and last parts
     const firstPart = text.substring(0, Math.floor(text.length * 0.3));
-    const lastPart = text.substring(text.length - Math.floor(text.length * 0.2));
-    
+    const lastPart = text.substring(
+      text.length - Math.floor(text.length * 0.2)
+    );
+
     return `Text Summary:\n${firstPart}\n\n[... middle content omitted ...]\n\n${lastPart}\n\nFull Text Length: ${text.length} characters`;
   }
 }
