@@ -546,7 +546,7 @@ class InvoiceAnalysisLibrary {
     - Herken loyalty informatie (bonuskaart, air miles)
     - Herken terminal/merchant IDs
     - Wees uiterst nauwkeurig - dit is voor boekhouding
-    - Als een waarde niet te bepalen is, gebruik "NB" (Niet Bepaald)
+    - Als een waarde niet te bepalen is, gebruik "Onbekend" (Niet Bepaald)
     - Voeg altijd de ruwe tekst toe voor verificatie`;
 
     const userPrompt = `Document type: ${documentType}
@@ -747,14 +747,14 @@ class InvoiceAnalysisLibrary {
   extractCompanyInfo(text) {
     const lines = text.split("\n");
     const companyInfo = {
-      name: "NB",
-      address: "NB",
-      phone: "NB",
-      email: "NB",
-      website: "NB",
-      kvk: "NB",
-      btw: "NB",
-      iban: "NB",
+              name: "Onbekend",
+        address: "Onbekend",
+        phone: "Onbekend",
+        email: "Onbekend",
+        website: "Onbekend",
+        kvk: "Onbekend",
+        btw: "Onbekend",
+        iban: "Onbekend",
     };
 
     // Extract company name (look for company names in first few lines)
@@ -796,14 +796,14 @@ class InvoiceAnalysisLibrary {
    */
   extractTransactionInfo(text) {
     const transactionInfo = {
-      date: "NB",
-      time: "NB",
-      invoice_number: "NB",
-      transaction_id: "NB",
-      terminal_id: "NB",
-      merchant_id: "NB",
-      poi: "NB",
-      period: "NB",
+              date: "Onbekend",
+        time: "Onbekend",
+        invoice_number: "Onbekend",
+        transaction_id: "Onbekend",
+        terminal_id: "Onbekend",
+        merchant_id: "Onbekend",
+        poi: "Onbekend",
+        period: "Onbekend",
     };
 
     // Extract date
@@ -882,7 +882,7 @@ class InvoiceAnalysisLibrary {
       voordeel_amount: 0,
       koopzegels_amount: 0,
       koopzegels_count: 0,
-      payment_method: "NB",
+      payment_method: "Onbekend",
       payment_pin: 0,
       payment_cash: 0,
       payment_card: 0,
@@ -971,9 +971,9 @@ class InvoiceAnalysisLibrary {
    */
   extractLoyaltyInfo(text) {
     const loyaltyInfo = {
-      bonuskaart: "NB",
-      air_miles: "NB",
-      customer_card: "NB",
+      bonuskaart: "Onbekend",
+      air_miles: "Onbekend",
+      customer_card: "Onbekend",
       loyalty_points: 0,
     };
 
@@ -1009,7 +1009,7 @@ class InvoiceAnalysisLibrary {
           unit_price: parseFloat(itemMatch[3].replace(",", ".")),
           total_price: parseFloat(itemMatch[3].replace(",", ".")),
           category: "general",
-          bonus: "NB",
+          bonus: "Onbekend",
           bonus_amount: 0,
           discount_percentage: 0,
           tax_rate: 9,
@@ -1064,9 +1064,9 @@ class InvoiceAnalysisLibrary {
    */
   extractStoreInfo(text) {
     const storeInfo = {
-      filiaal: "NB",
-      kassa: "NB",
-      employee: "NB",
+      filiaal: "Onbekend",
+      kassa: "Onbekend",
+      employee: "Onbekend",
     };
 
     // Extract filiaal number
@@ -1083,11 +1083,11 @@ class InvoiceAnalysisLibrary {
    */
   extractBankInfo(text) {
     const bankInfo = {
-      bank_name: "NB",
-      card_type: "NB",
-      card_number: "NB",
-      authorization_code: "NB",
-      reading_method: "NB",
+      bank_name: "Onbekend",
+      card_type: "Onbekend",
+      card_number: "Onbekend",
+      authorization_code: "Onbekend",
+      reading_method: "Onbekend",
     };
 
     // Extract bank name
@@ -1714,7 +1714,7 @@ class InvoiceAnalysisLibrary {
       `🧠 Creating intelligent fallback analysis for ${documentType}`
     );
 
-    // Extract actual data from text instead of using generic "NB" values
+    // Extract actual data from text instead of using generic "Onbekend" values
     const extractedData = this.extractActualDataFromText(text, documentType);
 
     // If OCR text is too poor, try to extract from filename and document type

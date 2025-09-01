@@ -182,7 +182,7 @@ async function processWithAI(text, invoiceNumber) {
             - Herken terminal/merchant IDs
             - Gebruik het meegegeven factuurnummer
             - Wees uiterst nauwkeurig - dit is voor boekhouding
-            - Als een waarde niet te bepalen is, gebruik "NB" (Niet Bepaald)`,
+            - Als een waarde niet te bepalen is, gebruik "Onbekend" (Niet Bepaald)`,
           },
           {
             role: "user",
@@ -223,8 +223,8 @@ function createFallbackResponse(text, invoiceNumber) {
   console.log(`📄 Input text length: ${text.length} characters`);
 
   // Extract date and time with multiple patterns
-  let date = "NB";
-  let time = "NB";
+  let date = "Onbekend";
+  let time = "Onbekend";
 
   // Try multiple date patterns
   const datePatterns = [
@@ -504,14 +504,14 @@ function createFallbackResponse(text, invoiceNumber) {
   }
 
   // Extract store information with hybrid patterns
-  let filiaal = "NB";
-  let adres = "NB";
-  let telefoon = "NB";
-  let transactie = "NB";
-  let terminal = "NB";
-  let merchant = "NB";
-  let bonuskaart = "NB";
-  let airMiles = "NB";
+  let filiaal = "Onbekend";
+  let adres = "Onbekend";
+  let telefoon = "Onbekend";
+  let transactie = "Onbekend";
+  let terminal = "Onbekend";
+  let merchant = "Onbekend";
+  let bonuskaart = "Onbekend";
+  let airMiles = "Onbekend";
 
   // Hybrid patterns for filiaal and adres
   const filiaalPatterns = [
@@ -534,7 +534,7 @@ function createFallbackResponse(text, invoiceNumber) {
   }
 
   // Also try to extract adres from separate line
-  if (adres === "NB") {
+  if (adres === "Onbekend") {
     const adresMatch = text.match(/Parijsplein\s*\d+/i);
     if (adresMatch) {
       adres = adresMatch[0];
@@ -639,7 +639,7 @@ function createFallbackResponse(text, invoiceNumber) {
   }
 
   // If still not found, try a more specific pattern for the compressed format
-  if (airMiles === "NB") {
+  if (airMiles === "Onbekend") {
     const compressedMatch = text.match(/AIRMILES[^x]*xx\d+/i);
     if (compressedMatch) {
       const fullMatch = compressedMatch[0];
@@ -734,8 +734,8 @@ function createFallbackResponse(text, invoiceNumber) {
 
   // Calculate confidence score
   let confidence = 70;
-  if (date !== "NB") confidence += 5;
-  if (time !== "NB") confidence += 5;
+  if (date !== "Onbekend") confidence += 5;
+  if (time !== "Onbekend") confidence += 5;
   if (subtotalAfterDiscount > 0) confidence += 5;
   if (subtotalBeforeDiscount > 0) confidence += 5;
   if (btw9 > 0) confidence += 5;
@@ -746,12 +746,12 @@ function createFallbackResponse(text, invoiceNumber) {
   if (totalAmount > 0) confidence += 5;
   if (pinAmount > 0) confidence += 5;
   if (itemCount > 0) confidence += 5;
-  if (filiaal !== "NB") confidence += 5;
-  if (transactie !== "NB") confidence += 5;
-  if (terminal !== "NB") confidence += 5;
-  if (merchant !== "NB") confidence += 5;
-  if (bonuskaart !== "NB") confidence += 5;
-  if (airMiles !== "NB") confidence += 5;
+  if (filiaal !== "Onbekend") confidence += 5;
+  if (transactie !== "Onbekend") confidence += 5;
+  if (terminal !== "Onbekend") confidence += 5;
+  if (merchant !== "Onbekend") confidence += 5;
+  if (bonuskaart !== "Onbekend") confidence += 5;
+  if (airMiles !== "Onbekend") confidence += 5;
 
   console.log(`🎯 Confidence score: ${confidence}`);
 
@@ -779,12 +779,12 @@ function createFallbackResponse(text, invoiceNumber) {
       filiaal: filiaal,
       adres: adres,
       telefoon: telefoon,
-      kassa: "NB",
+      kassa: "Onbekend",
       transactie: transactie,
       terminal: terminal,
       merchant: merchant,
-      poi: "NB",
-      autorisatiecode: "NB",
+      poi: "Onbekend",
+      autorisatiecode: "Onbekend",
     },
     loyalty: {
       bonuskaart: bonuskaart,
@@ -839,37 +839,37 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
     const mainRowData = [
       new Date().toISOString(), // Timestamp
       invoiceData.invoice_number || "INV-UNKNOWN",
-      invoiceData.company || "NB",
+      invoiceData.company || "Onbekend",
       invoiceData.date || new Date().toISOString().split("T")[0],
-      invoiceData.time || "NB",
-      invoiceData.subtotal || "NB", // Subtotaal na korting
-      invoiceData.subtotal_before_discount || "NB", // Subtotaal vóór korting
-      invoiceData.tax_9 || "NB",
-      invoiceData.tax_21 || "NB",
-      invoiceData.btw_breakdown?.btw_9_base || "NB", // BTW 9% grondslag
-      invoiceData.btw_breakdown?.btw_21_base || "NB", // BTW 21% grondslag
-      invoiceData.bonus_amount || "NB", // Bonus totaal
-      invoiceData.emballage_amount || "NB", // Emballage totaal
-      invoiceData.voordeel_amount || "NB", // Voordeel totaal
-      invoiceData.koopzegels_amount || "NB", // Koopzegels bedrag
-      invoiceData.koopzegels_count || "NB", // Koopzegels aantal
-      invoiceData.total_amount || "NB",
-      invoiceData.payment_pin || "NB", // Betaald PIN
-      invoiceData.payment_emballage || "NB", // Betaald Emballage
+      invoiceData.time || "Onbekend",
+      invoiceData.subtotal || "Onbekend", // Subtotaal na korting
+      invoiceData.subtotal_before_discount || "Onbekend", // Subtotaal vóór korting
+      invoiceData.tax_9 || "Onbekend",
+      invoiceData.tax_21 || "Onbekend",
+      invoiceData.btw_breakdown?.btw_9_base || "Onbekend", // BTW 9% grondslag
+      invoiceData.btw_breakdown?.btw_21_base || "Onbekend", // BTW 21% grondslag
+      invoiceData.bonus_amount || "Onbekend", // Bonus totaal
+      invoiceData.emballage_amount || "Onbekend", // Emballage totaal
+      invoiceData.voordeel_amount || "Onbekend", // Voordeel totaal
+      invoiceData.koopzegels_amount || "Onbekend", // Koopzegels bedrag
+      invoiceData.koopzegels_count || "Onbekend", // Koopzegels aantal
+      invoiceData.total_amount || "Onbekend",
+      invoiceData.payment_pin || "Onbekend", // Betaald PIN
+      invoiceData.payment_emballage || "Onbekend", // Betaald Emballage
       invoiceData.currency || "EUR",
       invoiceData.document_type || "receipt",
-      invoiceData.item_count || "NB",
-      invoiceData.payment_method || "NB",
-      invoiceData.store_info?.filiaal || "NB", // Filiaal
-      invoiceData.store_info?.adres || "NB", // Adres
-      invoiceData.store_info?.telefoon || "NB", // Telefoon
-      invoiceData.store_info?.kassa || "NB", // Kassa
-      invoiceData.store_info?.transactie || "NB", // Transactie
-      invoiceData.store_info?.terminal || "NB", // Terminal ID
-      invoiceData.store_info?.merchant || "NB", // Merchant ID
-      invoiceData.loyalty?.bonuskaart || "NB", // Bonuskaart
-      invoiceData.loyalty?.air_miles || "NB", // Air Miles
-      invoiceData.confidence || "NB",
+      invoiceData.item_count || "Onbekend",
+      invoiceData.payment_method || "Onbekend",
+      invoiceData.store_info?.filiaal || "Onbekend", // Filiaal
+      invoiceData.store_info?.adres || "Onbekend", // Adres
+      invoiceData.store_info?.telefoon || "Onbekend", // Telefoon
+      invoiceData.store_info?.kassa || "Onbekend", // Kassa
+      invoiceData.store_info?.transactie || "Onbekend", // Transactie
+      invoiceData.store_info?.terminal || "Onbekend", // Terminal ID
+      invoiceData.store_info?.merchant || "Onbekend", // Merchant ID
+      invoiceData.loyalty?.bonuskaart || "Onbekend", // Bonuskaart
+      invoiceData.loyalty?.air_miles || "Onbekend", // Air Miles
+      invoiceData.confidence || "Onbekend",
       invoiceData.notes || "",
     ];
 
@@ -892,9 +892,9 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
       const detailRows = invoiceData.items.map((item) => [
         new Date().toISOString(), // Timestamp
         invoiceData.invoice_number || "INV-UNKNOWN",
-        invoiceData.company || "NB",
+        invoiceData.company || "Onbekend",
         invoiceData.date || new Date().toISOString().split("T")[0],
-        item.name || "NB",
+        item.name || "Onbekend",
         item.category || "voeding",
         item.quantity || "1",
         item.unit_price || "0",
@@ -902,17 +902,17 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
         item.bonus || "nee", // Bonus info
         item.bonus_amount || "0", // Bonus bedrag
         invoiceData.currency || "EUR",
-        invoiceData.payment_method || "NB",
-        invoiceData.store_info?.kassa || "NB",
-        invoiceData.store_info?.transactie || "NB",
-        invoiceData.store_info?.terminal || "NB",
-        invoiceData.store_info?.merchant || "NB",
-        invoiceData.store_info?.poi || "NB",
-        invoiceData.store_info?.filiaal || "NB",
-        invoiceData.store_info?.adres || "NB",
-        invoiceData.store_info?.telefoon || "NB",
-        invoiceData.loyalty?.bonuskaart || "NB",
-        invoiceData.loyalty?.air_miles || "NB",
+        invoiceData.payment_method || "Onbekend",
+        invoiceData.store_info?.kassa || "Onbekend",
+        invoiceData.store_info?.transactie || "Onbekend",
+        invoiceData.store_info?.terminal || "Onbekend",
+        invoiceData.store_info?.merchant || "Onbekend",
+        invoiceData.store_info?.poi || "Onbekend",
+        invoiceData.store_info?.filiaal || "Onbekend",
+        invoiceData.store_info?.adres || "Onbekend",
+        invoiceData.store_info?.telefoon || "Onbekend",
+        invoiceData.loyalty?.bonuskaart || "Onbekend",
+        invoiceData.loyalty?.air_miles || "Onbekend",
         invoiceData.notes || "",
       ]);
 
@@ -988,7 +988,7 @@ async function saveDetailedInvoiceToSheets(invoiceData) {
           new Date().toISOString(), // Timestamp
           invoiceData.invoice_number || "INV-UNKNOWN",
           invoiceData.date || new Date().toISOString().split("T")[0],
-          invoiceData.company || "NB",
+          invoiceData.company || "Onbekend",
           invoiceData.total_amount || "0", // Totaalbedrag Factuur
           invoiceData.koopzegels_count || "0", // Koopzegels Aantal
           invoiceData.koopzegels_amount || "0", // Koopzegels Bedrag

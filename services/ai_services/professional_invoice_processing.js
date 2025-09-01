@@ -19,33 +19,33 @@ function createProfessionalInvoiceResponse(text, invoiceNumber) {
   // Initialize response object
   const response = {
     invoice_number: invoiceNumber,
-    company_name: "NB",
-    supplier_name: "NB",
-    supplier_address: "NB",
-    supplier_phone: "NB",
-    supplier_email: "NB",
-    supplier_website: "NB",
-    supplier_btw: "NB",
-    supplier_kvk: "NB",
-    supplier_iban: "NB",
-    supplier_bic: "NB",
-    invoice_date: "NB",
-    due_date: "NB",
-    invoice_reference: "NB",
-    customer_name: "NB",
-    customer_address: "NB",
-    customer_phone: "NB",
-    customer_email: "NB",
-    customer_btw: "NB",
-    customer_kvk: "NB",
+    company_name: "Onbekend",
+    supplier_name: "Onbekend",
+    supplier_address: "Onbekend",
+    supplier_phone: "Onbekend",
+    supplier_email: "Onbekend",
+    supplier_website: "Onbekend",
+    supplier_btw: "Onbekend",
+    supplier_kvk: "Onbekend",
+    supplier_iban: "Onbekend",
+    supplier_bic: "Onbekend",
+    invoice_date: "Onbekend",
+    due_date: "Onbekend",
+    invoice_reference: "Onbekend",
+    customer_name: "Onbekend",
+    customer_address: "Onbekend",
+    customer_phone: "Onbekend",
+    customer_email: "Onbekend",
+    customer_btw: "Onbekend",
+    customer_kvk: "Onbekend",
     subtotal_excl_btw: 0,
     btw_amount: 0,
     btw_percentage: 0,
     total_amount: 0,
     currency: "EUR",
-    payment_terms: "NB",
+    payment_terms: "Onbekend",
     items: [],
-    notes: "NB",
+    notes: "Onbekend",
     document_type: "professional_invoice",
     processing_method: "Professional invoice extraction - AI not available",
   };
@@ -59,7 +59,7 @@ function createProfessionalInvoiceResponse(text, invoiceNumber) {
     }
 
     // Extract supplier name (usually after Handelsnaam or in company name)
-    if (response.company_name !== "NB") {
+    if (response.company_name !== "Onbekend") {
       response.supplier_name = response.company_name;
     }
 
@@ -345,38 +345,38 @@ async function saveProfessionalInvoiceToSheets(invoiceData) {
     const mainRowData = [
       new Date().toISOString(), // Timestamp
       invoiceData.invoice_number || "INV-UNKNOWN",
-      invoiceData.company_name || "NB", // Company name
+      invoiceData.company_name || "Onbekend", // Company name
       invoiceData.invoice_date || new Date().toISOString().split("T")[0], // Invoice date
-      "NB", // Time (not applicable for invoices)
-      "NB", // Subtotaal na korting (not applicable)
-      "NB", // Subtotaal vóór korting (not applicable)
-      "NB", // BTW 9%
-      invoiceData.btw_amount || "NB", // BTW 21% (or total BTW)
-      "NB", // BTW 9% grondslag
-      invoiceData.subtotal_excl_btw || "NB", // BTW 21% grondslag (actually subtotal excl BTW)
-      "NB", // Bonus totaal (not applicable)
-      "NB", // Emballage totaal (not applicable)
-      "NB", // Voordeel totaal (not applicable)
-      "NB", // Koopzegels bedrag (not applicable)
-      "NB", // Koopzegels aantal (not applicable)
-      invoiceData.total_amount || "NB", // Total amount
-      "NB", // Betaald PIN (not applicable)
-      "NB", // Betaald Emballage (not applicable)
+      "Onbekend", // Time (not applicable for invoices)
+      "Onbekend", // Subtotaal na korting (not applicable)
+      "Onbekend", // Subtotaal vóór korting (not applicable)
+      "Onbekend", // BTW 9%
+      invoiceData.btw_amount || "Onbekend", // BTW 21% (or total BTW)
+      "Onbekend", // BTW 9% grondslag
+      invoiceData.subtotal_excl_btw || "Onbekend", // BTW 21% grondslag (actually subtotal excl BTW)
+      "Onbekend", // Bonus totaal (not applicable)
+      "Onbekend", // Emballage totaal (not applicable)
+      "Onbekend", // Voordeel totaal (not applicable)
+      "Onbekend", // Koopzegels bedrag (not applicable)
+      "Onbekend", // Koopzegels aantal (not applicable)
+      invoiceData.total_amount || "Onbekend", // Total amount
+      "Onbekend", // Betaald PIN (not applicable)
+      "Onbekend", // Betaald Emballage (not applicable)
       invoiceData.currency || "EUR",
       invoiceData.document_type || "professional_invoice",
-      invoiceData.items?.length || "NB", // Item count
+      invoiceData.items?.length || "Onbekend", // Item count
       "INVOICE", // Payment method
-      "NB", // Filiaal (not applicable)
-      invoiceData.supplier_address || "NB", // Adres
-      invoiceData.supplier_phone || "NB", // Telefoon
-      "NB", // Kassa (not applicable)
-      invoiceData.invoice_reference || "NB", // Transactie (use invoice reference)
-      "NB", // Terminal ID (not applicable)
-      "NB", // Merchant ID (not applicable)
-      "NB", // Bonuskaart (not applicable)
-      "NB", // Air Miles (not applicable)
-      "NB", // Confidence
-      invoiceData.payment_terms || "NB", // Notes (use payment terms)
+      "Onbekend", // Filiaal (not applicable)
+      invoiceData.supplier_address || "Onbekend", // Adres
+      invoiceData.supplier_phone || "Onbekend", // Telefoon
+      "Onbekend", // Kassa (not applicable)
+      invoiceData.invoice_reference || "Onbekend", // Transactie (use invoice reference)
+      "Onbekend", // Terminal ID (not applicable)
+      "Onbekend", // Merchant ID (not applicable)
+      "Onbekend", // Bonuskaart (not applicable)
+      "Onbekend", // Air Miles (not applicable)
+      "Onbekend", // Confidence
+      invoiceData.payment_terms || "Onbekend", // Notes (use payment terms)
     ];
 
     await sheets.spreadsheets.values.append({
@@ -398,9 +398,9 @@ async function saveProfessionalInvoiceToSheets(invoiceData) {
       const detailRows = invoiceData.items.map((item) => [
         new Date().toISOString(), // Timestamp
         invoiceData.invoice_number || "INV-UNKNOWN",
-        invoiceData.company_name || "NB",
+        invoiceData.company_name || "Onbekend",
         invoiceData.invoice_date || new Date().toISOString().split("T")[0],
-        item.description || "NB", // Item name
+        item.description || "Onbekend", // Item name
         "professional_service", // Category
         item.quantity || "1",
         item.price_excl_btw || "0", // Unit price (excl BTW)
@@ -409,17 +409,17 @@ async function saveProfessionalInvoiceToSheets(invoiceData) {
         "0", // Bonus bedrag (not applicable)
         invoiceData.currency || "EUR",
         "INVOICE", // Payment method
-        "NB", // Kassa (not applicable)
-        invoiceData.invoice_reference || "NB", // Transactie (use invoice reference)
-        "NB", // Terminal (not applicable)
-        "NB", // Merchant (not applicable)
-        "NB", // POI (not applicable)
-        "NB", // Filiaal (not applicable)
-        invoiceData.supplier_address || "NB", // Adres
-        invoiceData.supplier_phone || "NB", // Telefoon
-        "NB", // Bonuskaart (not applicable)
-        "NB", // Air Miles (not applicable)
-        invoiceData.payment_terms || "NB", // Notes (use payment terms)
+        "Onbekend", // Kassa (not applicable)
+        invoiceData.invoice_reference || "Onbekend", // Transactie (use invoice reference)
+        "Onbekend", // Terminal (not applicable)
+        "Onbekend", // Merchant (not applicable)
+        "Onbekend", // POI (not applicable)
+        "Onbekend", // Filiaal (not applicable)
+        invoiceData.supplier_address || "Onbekend", // Adres
+        invoiceData.supplier_phone || "Onbekend", // Telefoon
+        "Onbekend", // Bonuskaart (not applicable)
+        "Onbekend", // Air Miles (not applicable)
+        invoiceData.payment_terms || "Onbekend", // Notes (use payment terms)
       ]);
 
       await sheets.spreadsheets.values.append({

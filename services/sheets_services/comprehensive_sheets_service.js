@@ -687,6 +687,92 @@ class ComprehensiveSheetsService {
       return null;
     }
   }
+
+  /**
+   * Setup headers for all tabs
+   */
+  async setupHeaders() {
+    if (!(await this.initialize())) {
+      return false;
+    }
+
+    try {
+      console.log("🔧 Setting up headers for all tabs...");
+
+      // Setup main invoices tab headers
+      const mainHeaders = [
+        "Verwerkt Op",
+        "Factuurnummer",
+        "Document Type",
+        "Bedrijf",
+        "Datum",
+        "Tijd",
+        "Subtotaal",
+        "BTW 9%",
+        "BTW 21%",
+        "Totaal",
+        "Betaalmethode",
+        "Items",
+        "Betrouwbaarheid",
+        "Notities"
+      ];
+
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId: this.spreadsheetId,
+        range: "Invoices!A1:N1",
+        valueInputOption: "RAW",
+        resource: { values: [mainHeaders] }
+      });
+
+      // Setup items tab headers
+      const itemsHeaders = [
+        "Factuurnummer",
+        "Item Naam",
+        "Aantal",
+        "Prijs per stuk",
+        "Totaal prijs",
+        "BTW percentage",
+        "BTW bedrag",
+        "Korting",
+        "Bonus"
+      ];
+
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId: this.spreadsheetId,
+        range: "Items!A1:I1",
+        valueInputOption: "RAW",
+        resource: { values: [itemsHeaders] }
+      });
+
+      // Setup analysis tab headers
+      const analysisHeaders = [
+        "Factuurnummer",
+        "Document Type",
+        "Company Info",
+        "Financial Info",
+        "Transaction Info",
+        "Item Summary",
+        "Loyalty Info",
+        "Store Info",
+        "Document Info",
+        "Processing Date"
+      ];
+
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId: this.spreadsheetId,
+        range: "Analysis!A1:J1",
+        valueInputOption: "RAW",
+        resource: { values: [analysisHeaders] }
+      });
+
+      console.log("✅ Headers setup completed for all tabs");
+      return true;
+
+    } catch (error) {
+      console.error("❌ Error setting up headers:", error);
+      return false;
+    }
+  }
 }
 
 module.exports = ComprehensiveSheetsService;
