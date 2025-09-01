@@ -12,6 +12,8 @@ class ComprehensiveSheetsService {
     this.credentials = process.env.GOOGLE_SHEETS_CREDENTIALS;
     this.sheets = null;
     this.auth = null;
+    this.headersCache = new Map(); // Cache for headers to avoid repeated API calls
+    this.initialized = false;
   }
 
   /**
@@ -23,6 +25,10 @@ class ComprehensiveSheetsService {
       return false;
     }
 
+    if (this.initialized) {
+      return true; // Already initialized
+    }
+
     try {
       const credentials = JSON.parse(this.credentials);
       this.auth = new google.auth.GoogleAuth({
@@ -30,11 +36,24 @@ class ComprehensiveSheetsService {
         scopes: ["https://www.googleapis.com/auth/spreadsheets"],
       });
       this.sheets = google.sheets({ version: "v4", auth: this.auth });
+      
+      // Initialize headers cache on first startup
+      await this.initializeHeadersCache();
+      
+      this.initialized = true;
       return true;
     } catch (error) {
       console.error("❌ Error initializing Google Sheets:", error);
       return false;
     }
+  }
+
+  /**
+   * Clear headers cache (useful for testing or when headers change)
+   */
+  clearHeadersCache() {
+    this.headersCache.clear();
+    console.log("📋 Headers cache cleared");
   }
 
   /**
@@ -433,10 +452,57 @@ class ComprehensiveSheetsService {
   }
 
   /**
-   * Ensure headers exist for a tab
+   * Initialize headers cache for all tabs
+   */
+  async initializeHeadersCache() {
+    try {
+      console.log("📋 Initializing headers cache...");
+      
+      // Get all sheets in the spreadsheet
+      const spreadsheet = await this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId
+      });
+
+      const sheets = spreadsheet.data.sheets;
+      
+      // Cache headers for each sheet
+      for (const sheet of sheets) {
+        const tabName = sheet.properties.title;
+        try {
+          const range = `${tabName}!A1:Z1`; // Check first 26 columns
+          const response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId: this.spreadsheetId,
+            range: range
+          });
+          
+          const headers = response.data.values?.[0] || [];
+          this.headersCache.set(tabName, headers);
+          console.log(`📋 Cached headers for ${tabName}: ${headers.length} columns`);
+        } catch (error) {
+          console.log(`📋 No headers found for ${tabName}, will create when needed`);
+          this.headersCache.set(tabName, []);
+        }
+      }
+      
+      console.log("📋 Headers cache initialized successfully");
+    } catch (error) {
+      console.error("❌ Error initializing headers cache:", error);
+    }
+  }
+  /**
+   * Ensure headers exist for a tab (using cache to avoid API quota issues)
    */
   async ensureHeaders(tabName, headers) {
     try {
+      // Check cache first
+      const cachedHeaders = this.headersCache.get(tabName) || [];
+      
+      // If headers match, no need to update
+      if (cachedHeaders.length === headers.length && 
+          JSON.stringify(cachedHeaders) === JSON.stringify(headers)) {
+        return true;
+      }
+      
       // Check if tab exists
       const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId
@@ -465,28 +531,21 @@ class ComprehensiveSheetsService {
         console.log(`📋 Created new tab: ${tabName}`);
       }
 
-      // Check if headers exist
+      // Set headers
       const range = `${tabName}!A1:${this.getColumnLetter(headers.length)}1`;
-      const response = await this.sheets.spreadsheets.values.get({
+      await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.spreadsheetId,
-        range: range
+        range: range,
+        valueInputOption: "RAW",
+        resource: {
+          values: [headers]
+        }
       });
-
-      const existingHeaders = response.data.values?.[0] || [];
-
-      if (existingHeaders.length === 0 || existingHeaders.length !== headers.length) {
-        // Set headers
-        await this.sheets.spreadsheets.values.update({
-          spreadsheetId: this.spreadsheetId,
-          range: range,
-          valueInputOption: "RAW",
-          resource: {
-            values: [headers]
-          }
-        });
-        console.log(`📋 Set headers for tab: ${tabName}`);
-      }
-
+      
+      // Update cache
+      this.headersCache.set(tabName, headers);
+      console.log(`📋 Set headers for tab: ${tabName}`);
+      
       return true;
       
     } catch (error) {
