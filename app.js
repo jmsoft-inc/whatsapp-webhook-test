@@ -353,7 +353,7 @@ async function showMainMenu(from) {
   // Fallback to text menu if interactive message fails
   if (!result) {
     console.log(`📤 Falling back to text menu for user ${from}`);
-    const textMenu = `🎛️ *JMS AI Agents Menu*
+    const textMenu = `🎛️ *JMSoft AI Agents Menu*
 
 Hallo! 👋 Ik ben je slimme assistent voor documentverwerking en administratie. Ik help je graag met het verwerken van facturen, bonnetjes en andere documenten. Kies hieronder wat je wilt doen! 🚀
 
