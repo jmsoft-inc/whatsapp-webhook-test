@@ -405,11 +405,11 @@ class InvoiceAnalysisLibrary {
           }
         }
 
-        // If all parsing fails, create enhanced fallback
-        return this.createEnhancedFallbackAnalysis(
+        // If all parsing fails, create intelligent fallback
+        return this.createIntelligentFallbackAnalysis(
           text,
           documentType,
-          aiResponse
+          new Error("JSON parsing failed")
         );
       }
     } catch (error) {
@@ -421,7 +421,9 @@ class InvoiceAnalysisLibrary {
           error.response.data
         );
       }
-      return this.createEnhancedFallbackAnalysis(text, documentType, null);
+      
+      // Use intelligent fallback instead of generic fallback
+      return this.createIntelligentFallbackAnalysis(text, documentType, error);
     }
   }
 
@@ -675,6 +677,150 @@ class InvoiceAnalysisLibrary {
       notes.push(`AI response available but not parseable`);
     }
 
+    return notes.join(" | ");
+  }
+
+  /**
+   * Create intelligent fallback analysis based on document content
+   */
+  createIntelligentFallbackAnalysis(text, documentType, error = null) {
+    console.log(`🧠 Creating intelligent fallback analysis for ${documentType}`);
+    
+    // Extract actual data from text instead of using generic "NB" values
+    const extractedData = this.extractActualDataFromText(text, documentType);
+    
+    const analysis = {
+      document_info: {
+        type: documentType,
+        subtype: this.detectSubtype(text),
+        language: this.detectLanguage(text),
+        confidence: extractedData.confidence || 70,
+      },
+      company_info: extractedData.company || this.extractCompanyInfo(text),
+      transaction_info: extractedData.transaction || this.extractTransactionInfo(text),
+      financial_info: extractedData.financial || this.extractFinancialInfo(text),
+      loyalty_info: extractedData.loyalty || this.extractLoyaltyInfo(text),
+      items: extractedData.items || this.extractItems(text),
+      item_summary: extractedData.itemSummary || this.createItemSummary(text),
+      btw_breakdown: extractedData.btw || this.extractBTWBreakdown(text),
+      store_info: extractedData.store || this.extractStoreInfo(text),
+      bank_info: extractedData.bank || this.extractBankInfo(text),
+      notes: this.createIntelligentNotes(text, documentType, extractedData, error),
+      raw_text: text ? text.substring(0, 50000) : "",
+    };
+
+    return analysis;
+  }
+
+  /**
+   * Extract actual data from text using pattern matching
+   */
+  extractActualDataFromText(text, documentType) {
+    if (!text) return {};
+    
+    const lowerText = text.toLowerCase();
+    const extracted = {
+      confidence: 70,
+      company: {},
+      transaction: {},
+      financial: {},
+      items: [],
+      itemSummary: {},
+      btw: {},
+      store: {},
+      bank: {},
+    };
+
+    // Extract company information
+    if (lowerText.includes("albert heijn") || lowerText.includes("ah")) {
+      extracted.company.name = "Albert Heijn";
+      extracted.confidence += 10;
+    } else if (lowerText.includes("jumbo")) {
+      extracted.company.name = "Jumbo";
+      extracted.confidence += 10;
+    } else if (lowerText.includes("lidl")) {
+      extracted.company.name = "Lidl";
+      extracted.confidence += 10;
+    } else if (lowerText.includes("studiekosten")) {
+      extracted.company.name = "Studiekosten";
+      extracted.confidence += 10;
+    } else if (lowerText.includes("rompslomp")) {
+      extracted.company.name = "Rompslomp";
+      extracted.confidence += 10;
+    }
+
+    // Extract dates
+    const dateMatches = text.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/g);
+    if (dateMatches && dateMatches.length > 0) {
+      extracted.transaction.date = dateMatches[0];
+      extracted.confidence += 10;
+    }
+
+    // Extract times
+    const timeMatches = text.match(/(\d{1,2}):(\d{2})/g);
+    if (timeMatches && timeMatches.length > 0) {
+      extracted.transaction.time = timeMatches[0];
+      extracted.confidence += 5;
+    }
+
+    // Extract amounts
+    const amountMatches = text.match(/€?\s*(\d+[.,]\d{2})/g);
+    if (amountMatches && amountMatches.length > 0) {
+      const amounts = amountMatches.map(amt => 
+        parseFloat(amt.replace(/[€,\s]/g, "").replace(",", "."))
+      );
+      extracted.financial.total_amount = Math.max(...amounts);
+      extracted.financial.currency = "EUR";
+      extracted.confidence += 15;
+    }
+
+    // Extract BTW/VAT
+    const btwMatches = text.match(/btw\s*:?\s*€?\s*(\d+[.,]\d{2})/gi);
+    if (btwMatches && btwMatches.length > 0) {
+      const btwAmounts = btwMatches.map(btw => 
+        parseFloat(btw.replace(/[btw:\s€]/gi, "").replace(",", "."))
+      );
+      extracted.btw.tax_total = btwAmounts.reduce((sum, amt) => sum + amt, 0);
+      extracted.confidence += 10;
+    }
+
+    // Extract items count
+    const itemMatches = text.match(/(\d+)\s*x\s*[€€]?\s*\d+[.,]\d{2}/g);
+    if (itemMatches && itemMatches.length > 0) {
+      extracted.itemSummary.total_items = itemMatches.length;
+      extracted.confidence += 10;
+    }
+
+    return extracted;
+  }
+
+  /**
+   * Create intelligent notes based on extracted data
+   */
+  createIntelligentNotes(text, documentType, extractedData, error) {
+    const notes = [];
+    
+    notes.push(`Intelligent fallback analysis for ${documentType}`);
+    
+    if (extractedData.company.name) notes.push(`✓ Company: ${extractedData.company.name}`);
+    if (extractedData.transaction.date) notes.push(`✓ Date: ${extractedData.transaction.date}`);
+    if (extractedData.transaction.time) notes.push(`✓ Time: ${extractedData.transaction.time}`);
+    if (extractedData.financial.total_amount) notes.push(`✓ Total: €${extractedData.financial.total_amount}`);
+    if (extractedData.btw.tax_total) notes.push(`✓ BTW: €${extractedData.btw.tax_total}`);
+    if (extractedData.itemSummary.total_items) notes.push(`✓ Items: ${extractedData.itemSummary.total_items}`);
+    
+    if (error) {
+      notes.push(`⚠️ AI analysis failed: ${error.message}`);
+    }
+    
+    if (text) {
+      const textPreview = text.length > 200 ? text.substring(0, 200) + "..." : text;
+      notes.push(`Text preview: ${textPreview}`);
+      notes.push(`Full text length: ${text.length} characters`);
+    }
+    
+    notes.push(`Confidence: ${extractedData.confidence}%`);
+    
     return notes.join(" | ");
   }
 
