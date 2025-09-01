@@ -39,11 +39,11 @@ const {
 const { createVersionMessage } = require("./services/version_management");
 
 // Import improved WhatsApp messaging
-const { 
-  sendTextMessage, 
-  sendInteractiveMessage, 
+const {
+  sendTextMessage,
+  sendInteractiveMessage,
   sendMediaMessage,
-  testWhatsAppConnection 
+  testWhatsAppConnection,
 } = require("./services/whatsapp_messaging");
 
 // Import image storage (legacy support)
@@ -334,13 +334,13 @@ async function showMainMenu(from) {
               title: "📋 1 factuur",
             },
           },
-                      {
-              type: "reply",
-              reply: {
-                id: "option_3",
-                title: "ℹ️ Informatie",
-              },
+          {
+            type: "reply",
+            reply: {
+              id: "option_3",
+              title: "ℹ️ Informatie",
             },
+          },
         ],
       },
     },
@@ -349,7 +349,7 @@ async function showMainMenu(from) {
   console.log(`📤 Sending interactive menu to user ${from}`);
   const result = await sendWhatsAppInteractiveMessage(from, menuMessage);
   console.log(`📤 Interactive menu sent to user ${from}, result: ${result}`);
-  
+
   // Fallback to text menu if interactive message fails
   if (!result) {
     console.log(`📤 Falling back to text menu for user ${from}`);
@@ -372,7 +372,7 @@ Meer informatie over JMSoft AI Agents en versie
 Beheer Google Sheets, data en systeem instellingen
 
 *Type het nummer (1, 2, 3, 4) of de tekst van je keuze.*`;
-    
+
     await sendWhatsAppMessage(from, textMenu);
   }
 }
@@ -475,7 +475,7 @@ Je kunt nu één document verwerken. Dit is ideaal voor:
     // Admin commands
     const adminMessage = getAdminCommandsList();
     await sendWhatsAppMessage(from, adminMessage.message);
-    
+
     // Show menu again after admin info
     await showMainMenu(from);
     session.state = "initial";
@@ -505,7 +505,7 @@ Example: \`/clear\` or \`/delete INV-1234567890-123\`
 *Type een commando om te beginnen!*`;
 
     await sendWhatsAppMessage(from, adminMessage);
-    
+
     // Show main menu after admin commands list
     await showMainMenu(from);
     session.state = "initial";
