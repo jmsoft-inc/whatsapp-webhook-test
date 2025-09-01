@@ -12,13 +12,13 @@ const VERSION_HISTORY = {
   minor: 8,
 
   // Bug fixes and patches
-  patch: 13,
+  patch: 14,
 
   // Development stage
   stage: "stable", // 'alpha', 'beta', 'rc', 'stable'
 
   // Build number (git commit count)
-  build: 71,
+  build: 72,
 
   // Release date
   releaseDate: "2025-01-09",
@@ -117,6 +117,17 @@ const VERSION_HISTORY = {
         "Improved user responses",
         "WhatsApp API error handling",
         "Message validation and phone number validation",
+      ],
+    },
+    {
+      version: "1.8.14",
+      date: "2025-01-09",
+      features: [
+        "Fixed WhatsApp API 400 errors with Button Messages",
+        "Fallback text menu for compatibility",
+        "Admin commands via text interface",
+        "Improved error handling and validation",
+        "Enhanced user experience with reliable messaging",
       ],
     },
   ],

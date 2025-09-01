@@ -307,7 +307,7 @@ async function showMainMenu(from) {
     to: from,
     type: "interactive",
     interactive: {
-      type: "list",
+      type: "button",
       header: {
         type: "text",
         text: "JMSoft AI Agents",
@@ -316,37 +316,27 @@ async function showMainMenu(from) {
         text: "Ik ben je persoonlijke assistent voor verschillende werkzaamheden en verwerkingen. Maak hieronder een keuze uit het menu.",
       },
       action: {
-        button: "Menu openen",
-        sections: [
+        buttons: [
           {
-            title: "Invoice Agent",
-            rows: [
-              {
-                id: "option_1",
-                title: "📄 Meerdere facturen/bonnetjes verwerken",
-                description: "Verwerk meerdere documenten tegelijk in batch",
-              },
-              {
-                id: "option_2",
-                title: "📋 1 factuur/bonnetje verwerken",
-                description: "Verwerk één document individueel",
-              },
-            ],
+            type: "reply",
+            reply: {
+              id: "option_1",
+              title: "📄 Meerdere facturen",
+            },
           },
           {
-            title: "Informatie & Beheer",
-            rows: [
-              {
-                id: "option_3",
-                title: "ℹ️ Informatie",
-                description: "Meer informatie over JMSoft AI Agents en versie",
-              },
-              {
-                id: "option_4",
-                title: "🔧 Admin",
-                description: "Beheer Google Sheets, data en systeem instellingen",
-              },
-            ],
+            type: "reply",
+            reply: {
+              id: "option_2",
+              title: "📋 1 factuur",
+            },
+          },
+          {
+            type: "reply",
+            reply: {
+              id: "option_3",
+              title: "ℹ️ Informatie",
+            },
           },
         ],
       },
@@ -356,6 +346,30 @@ async function showMainMenu(from) {
   console.log(`📤 Sending interactive menu to user ${from}`);
   const result = await sendWhatsAppInteractiveMessage(from, menuMessage);
   console.log(`📤 Interactive menu sent to user ${from}, result: ${result}`);
+  
+  // Fallback to text menu if interactive message fails
+  if (!result) {
+    console.log(`📤 Falling back to text menu for user ${from}`);
+    const textMenu = `🎛️ *JMSoft AI Agents Menu*
+
+Ik ben je persoonlijke assistent voor verschillende werkzaamheden en verwerkingen. Maak hieronder een keuze:
+
+📄 *Optie 1: Meerdere facturen/bonnetjes verwerken*
+Verwerk meerdere documenten tegelijk in batch
+
+📋 *Optie 2: 1 factuur/bonnetje verwerken*
+Verwerk één document individueel
+
+ℹ️ *Optie 3: Informatie*
+Meer informatie over JMSoft AI Agents en versie
+
+🔧 *Admin: Beheer Google Sheets*
+Type 'admin' of '/help' voor beheeropdrachten
+
+*Type het nummer (1, 2, 3) of de tekst van je keuze.*`;
+    
+    await sendWhatsAppMessage(from, textMenu);
+  }
 }
 
 async function handleInitialState(from, text, session) {
@@ -431,6 +445,19 @@ Je kunt nu één document verwerken. Dit is ideaal voor:
     await sendWhatsAppMessage(from, versionMessage);
 
     // Show menu again after info
+    await showMainMenu(from);
+    session.state = "initial";
+  } else if (
+    text.includes("admin") ||
+    text.includes("beheer") ||
+    text.includes("opdrachten") ||
+    text.startsWith("/")
+  ) {
+    // Admin commands
+    const adminMessage = getAdminCommandsList();
+    await sendWhatsAppMessage(from, adminMessage.message);
+    
+    // Show menu again after admin info
     await showMainMenu(from);
     session.state = "initial";
   } else if (
