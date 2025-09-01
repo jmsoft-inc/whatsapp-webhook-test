@@ -30,7 +30,10 @@ const {
 } = require("./services/file_processor");
 
 // Import admin commands
-const { processAdminCommand, getAdminCommandsList } = require("./services/admin_commands");
+const {
+  processAdminCommand,
+  getAdminCommandsList,
+} = require("./services/admin_commands");
 
 // Import version management
 const { createVersionMessage } = require("./services/version_management");
@@ -307,7 +310,7 @@ async function showMainMenu(from) {
     to: from,
     type: "interactive",
     interactive: {
-      type: "list",
+      type: "button",
       header: {
         type: "text",
         text: "JMS AI Agents",
@@ -316,37 +319,27 @@ async function showMainMenu(from) {
         text: "Hallo! 👋 Ik ben je slimme assistent voor documentverwerking en administratie. Ik help je graag met het verwerken van facturen, bonnetjes en andere documenten. Kies hieronder wat je wilt doen! 🚀",
       },
       action: {
-        button: "🎛️ Menu Openen",
-        sections: [
+        buttons: [
           {
-            title: "🤖 AI Agent: Invoice Processor",
-            rows: [
-              {
-                id: "option_1",
-                title: "📄 Meerdere facturen/bonnetjes verwerken",
-                description: "Verwerk meerdere documenten tegelijk in batch",
-              },
-              {
-                id: "option_2",
-                title: "📋 1 factuur/bonnetje verwerken",
-                description: "Verwerk één document individueel",
-              },
-            ],
+            type: "reply",
+            reply: {
+              id: "option_1",
+              title: "📄 Meerdere facturen",
+            },
           },
           {
-            title: "ℹ️ Informatie & Beheer",
-            rows: [
-              {
-                id: "option_3",
-                title: "ℹ️ Informatie",
-                description: "Meer informatie over JMSoft AI Agents en versie",
-              },
-              {
-                id: "option_4",
-                title: "🔧 Admin",
-                description: "Beheer Google Sheets, data en systeem instellingen",
-              },
-            ],
+            type: "reply",
+            reply: {
+              id: "option_2",
+              title: "📋 1 factuur",
+            },
+          },
+          {
+            type: "reply",
+            reply: {
+              id: "option_3",
+              title: "🔧 Beheer",
+            },
           },
         ],
       },
@@ -371,14 +364,11 @@ Verwerk meerdere documenten tegelijk in batch
 📋 *Optie 2: 1 factuur/bonnetje verwerken*
 Verwerk één document individueel
 
-ℹ️ *Informatie & Beheer*
-ℹ️ *Optie 3: Informatie*
-Meer informatie over JMSoft AI Agents en versie
-
-🔧 *Optie 4: Admin*
+🔧 *Systeem Beheer*
+🔧 *Optie 3: Beheer & Admin*
 Beheer Google Sheets, data en systeem instellingen
 
-*Type het nummer (1, 2, 3, 4) of de tekst van je keuze.*`;
+*Type het nummer (1, 2, 3) of de tekst van je keuze.*`;
     
     await sendWhatsAppMessage(from, textMenu);
   }
@@ -449,15 +439,15 @@ Je kunt nu één document verwerken. Dit is ideaal voor:
   } else if (
     text.includes("3") ||
     text.includes("optie 3") ||
-    text.includes("informatie") ||
-    text.includes("info") ||
+    text.includes("beheer") ||
+    text.includes("admin") ||
     text === "option_3"
   ) {
-    // Option 3: Informatie
-    const versionMessage = createVersionMessage();
-    await sendWhatsAppMessage(from, versionMessage);
+    // Option 3: Beheer & Admin
+    const adminMessage = getAdminCommandsList();
+    await sendWhatsAppMessage(from, adminMessage.message);
 
-    // Show menu again after info
+    // Show menu again after admin info
     await showMainMenu(from);
     session.state = "initial";
   } else if (
@@ -490,12 +480,28 @@ Je kunt nu één document verwerken. Dit is ideaal voor:
     text.includes("4") ||
     text.includes("optie 4") ||
     text.includes("admin") ||
-    text.includes("beheer") ||
     text === "option_4"
   ) {
     // Option 4: Admin Commands
-    const adminMessage = getAdminCommandsList();
-    await sendWhatsAppMessage(from, adminMessage.message);
+    const adminMessage = `🔧 *Admin Commands*
+
+Hier zijn de beschikbare admin commando's:
+
+📋 *Available Commands:*
+1. \`/clear\` - Clear all data from sheets
+2. \`/stats\` - Show sheets statistics  
+3. \`/reset\` - Reset headers and formatting
+4. \`/delete INV-xxx\` - Delete specific invoice
+5. \`/status\` - Show system status
+6. \`/performance\` - Show performance metrics
+7. \`/help\` - Show this help
+
+💡 *Usage:* Just type the command in WhatsApp
+Example: \`/clear\` or \`/delete INV-1234567890-123\`
+
+*Type een commando om te beginnen!*`;
+
+    await sendWhatsAppMessage(from, adminMessage);
     
     // Show main menu after admin commands list
     await showMainMenu(from);
