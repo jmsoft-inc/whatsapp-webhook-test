@@ -356,18 +356,23 @@ class InvoiceAnalysisLibrary {
         return analysis;
       } catch (parseError) {
         console.error("❌ Failed to parse AI response as JSON:", parseError);
-        
+
         // Try to extract JSON from markdown code blocks first
-        const jsonCodeBlockMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
+        const jsonCodeBlockMatch = aiResponse.match(
+          /```json\s*([\s\S]*?)\s*```/
+        );
         if (jsonCodeBlockMatch) {
           try {
             const extractedJson = jsonCodeBlockMatch[1].trim();
             return JSON.parse(extractedJson);
           } catch (codeBlockError) {
-            console.error("❌ Failed to parse JSON from code block:", codeBlockError);
+            console.error(
+              "❌ Failed to parse JSON from code block:",
+              codeBlockError
+            );
           }
         }
-        
+
         // Try to extract JSON from regular code blocks
         const codeBlockMatch = aiResponse.match(/```\s*([\s\S]*?)\s*```/);
         if (codeBlockMatch) {
@@ -375,19 +380,28 @@ class InvoiceAnalysisLibrary {
             const extractedJson = codeBlockMatch[1].trim();
             return JSON.parse(extractedJson);
           } catch (codeBlockError) {
-            console.error("❌ Failed to parse JSON from code block:", codeBlockError);
+            console.error(
+              "❌ Failed to parse JSON from code block:",
+              codeBlockError
+            );
           }
         }
-        
+
         // Try to extract JSON using regex
         const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
             // Clean the JSON string by removing control characters
-            const cleanedJson = jsonMatch[0].replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+            const cleanedJson = jsonMatch[0].replace(
+              /[\x00-\x1F\x7F-\x9F]/g,
+              ""
+            );
             return JSON.parse(cleanedJson);
           } catch (secondParseError) {
-            console.error("❌ Failed to parse extracted JSON:", secondParseError);
+            console.error(
+              "❌ Failed to parse extracted JSON:",
+              secondParseError
+            );
           }
         }
 

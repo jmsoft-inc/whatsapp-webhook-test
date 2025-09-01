@@ -36,10 +36,10 @@ class ComprehensiveSheetsService {
         scopes: ["https://www.googleapis.com/auth/spreadsheets"],
       });
       this.sheets = google.sheets({ version: "v4", auth: this.auth });
-      
+
       // Initialize headers cache on first startup
       await this.initializeHeadersCache();
-      
+
       this.initialized = true;
       return true;
     } catch (error) {
@@ -60,24 +60,29 @@ class ComprehensiveSheetsService {
    * Save comprehensive analysis data to sheets
    */
   async saveComprehensiveAnalysis(analysisData, invoiceNumber) {
-    if (!await this.initialize()) {
+    if (!(await this.initialize())) {
       return false;
     }
 
     try {
       console.log("💾 Saving comprehensive analysis to sheets...");
-      
+
       // Save to main invoices tab
-      const mainSaved = await this.saveToMainInvoicesTab(analysisData, invoiceNumber);
-      
+      const mainSaved = await this.saveToMainInvoicesTab(
+        analysisData,
+        invoiceNumber
+      );
+
       // Save to detailed items tab
       const itemsSaved = await this.saveToItemsTab(analysisData, invoiceNumber);
-      
+
       // Save to comprehensive analysis tab
-      const analysisSaved = await this.saveToAnalysisTab(analysisData, invoiceNumber);
-      
+      const analysisSaved = await this.saveToAnalysisTab(
+        analysisData,
+        invoiceNumber
+      );
+
       return mainSaved && itemsSaved && analysisSaved;
-      
     } catch (error) {
       console.error("❌ Error saving comprehensive analysis:", error);
       return false;
@@ -118,7 +123,7 @@ class ComprehensiveSheetsService {
         "Aantal Items",
         "Unieke Items",
         "Betrouwbaarheid",
-        "Opmerkingen"
+        "Opmerkingen",
       ];
 
       // Ensure headers exist
@@ -153,7 +158,7 @@ class ComprehensiveSheetsService {
         analysisData.item_summary?.total_items || 0, // Aantal Items
         analysisData.item_summary?.unique_items || 0, // Unieke Items
         analysisData.document_info?.confidence || 0, // Betrouwbaarheid
-        analysisData.notes || "" // Opmerkingen
+        analysisData.notes || "", // Opmerkingen
       ];
 
       await this.sheets.spreadsheets.values.append({
@@ -161,12 +166,11 @@ class ComprehensiveSheetsService {
         range: "Invoices!A:AC",
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
-        resource: { values: [rowData] }
+        resource: { values: [rowData] },
       });
 
       console.log("✅ Saved to main invoices tab");
       return true;
-      
     } catch (error) {
       console.error("❌ Error saving to main invoices tab:", error);
       return false;
@@ -191,7 +195,7 @@ class ComprehensiveSheetsService {
         "Bonus",
         "Bonus Bedrag",
         "Korting Percentage",
-        "BTW Percentage"
+        "BTW Percentage",
       ];
 
       // Ensure headers exist
@@ -214,7 +218,7 @@ class ComprehensiveSheetsService {
           item.bonus || "NB", // Bonus
           item.bonus_amount || 0, // Bonus Bedrag
           item.discount_percentage || 0, // Korting Percentage
-          item.tax_rate || 0 // BTW Percentage
+          item.tax_rate || 0, // BTW Percentage
         ]);
       }
 
@@ -224,13 +228,12 @@ class ComprehensiveSheetsService {
           range: "Items!A:M",
           valueInputOption: "RAW",
           insertDataOption: "INSERT_ROWS",
-          resource: { values: rows }
+          resource: { values: rows },
         });
       }
 
       console.log("✅ Saved items to items tab");
       return true;
-      
     } catch (error) {
       console.error("❌ Error saving to items tab:", error);
       return false;
@@ -302,7 +305,7 @@ class ComprehensiveSheetsService {
         "Categorieën",
         "Opmerkingen",
         "Ruwe Tekst Preview",
-        "Ruwe Tekst Lengte"
+        "Ruwe Tekst Lengte",
       ];
 
       // Ensure headers exist
@@ -373,7 +376,7 @@ class ComprehensiveSheetsService {
         (analysisData.item_summary?.categories || []).join(", "), // Categorieën
         this.truncateForSheets(analysisData.notes || "", 2000), // Opmerkingen
         rawTextPreview, // Ruwe Tekst Preview
-        rawTextLength // Ruwe Tekst Lengte
+        rawTextLength, // Ruwe Tekst Lengte
       ];
 
       await this.sheets.spreadsheets.values.append({
@@ -381,7 +384,7 @@ class ComprehensiveSheetsService {
         range: "Comprehensive Analysis!A:AZ",
         valueInputOption: "RAW",
         insertDataOption: "INSERT_ROWS",
-        resource: { values: [rowData] }
+        resource: { values: [rowData] },
       });
 
       // Set row formatting to prevent auto-enlargement of notes column
@@ -398,13 +401,13 @@ class ComprehensiveSheetsService {
                       sheetId: await this.getSheetId("Comprehensive Analysis"),
                       dimension: "ROWS",
                       startIndex: lastRow - 1,
-                      endIndex: lastRow
+                      endIndex: lastRow,
                     },
                     properties: {
-                      pixelSize: 100 // Fixed row height
+                      pixelSize: 100, // Fixed row height
                     },
-                    fields: "pixelSize"
-                  }
+                    fields: "pixelSize",
+                  },
                 },
                 {
                   repeatCell: {
@@ -413,18 +416,18 @@ class ComprehensiveSheetsService {
                       startRowIndex: lastRow - 1,
                       endRowIndex: lastRow,
                       startColumnIndex: 52, // Notes column (AZ)
-                      endColumnIndex: 53
+                      endColumnIndex: 53,
                     },
                     cell: {
                       userEnteredFormat: {
-                        wrapStrategy: "CLIP" // Prevent text wrapping
-                      }
+                        wrapStrategy: "CLIP", // Prevent text wrapping
+                      },
                     },
-                    fields: "userEnteredFormat.wrapStrategy"
-                  }
-                }
-              ]
-            }
+                    fields: "userEnteredFormat.wrapStrategy",
+                  },
+                },
+              ],
+            },
           });
         }
       } catch (formatError) {
@@ -433,7 +436,6 @@ class ComprehensiveSheetsService {
 
       console.log("✅ Saved to comprehensive analysis tab");
       return true;
-      
     } catch (error) {
       console.error("❌ Error saving to analysis tab:", error);
       return false;
@@ -447,8 +449,11 @@ class ComprehensiveSheetsService {
     if (!text || text.length <= maxLength) {
       return text;
     }
-    
-    return text.substring(0, maxLength) + `\n\n[... truncated - full length: ${text.length} characters ...]`;
+
+    return (
+      text.substring(0, maxLength) +
+      `\n\n[... truncated - full length: ${text.length} characters ...]`
+    );
   }
 
   /**
@@ -457,14 +462,14 @@ class ComprehensiveSheetsService {
   async initializeHeadersCache() {
     try {
       console.log("📋 Initializing headers cache...");
-      
+
       // Get all sheets in the spreadsheet
       const spreadsheet = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId
+        spreadsheetId: this.spreadsheetId,
       });
 
       const sheets = spreadsheet.data.sheets;
-      
+
       // Cache headers for each sheet
       for (const sheet of sheets) {
         const tabName = sheet.properties.title;
@@ -472,18 +477,22 @@ class ComprehensiveSheetsService {
           const range = `${tabName}!A1:Z1`; // Check first 26 columns
           const response = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.spreadsheetId,
-            range: range
+            range: range,
           });
-          
+
           const headers = response.data.values?.[0] || [];
           this.headersCache.set(tabName, headers);
-          console.log(`📋 Cached headers for ${tabName}: ${headers.length} columns`);
+          console.log(
+            `📋 Cached headers for ${tabName}: ${headers.length} columns`
+          );
         } catch (error) {
-          console.log(`📋 No headers found for ${tabName}, will create when needed`);
+          console.log(
+            `📋 No headers found for ${tabName}, will create when needed`
+          );
           this.headersCache.set(tabName, []);
         }
       }
-      
+
       console.log("📋 Headers cache initialized successfully");
     } catch (error) {
       console.error("❌ Error initializing headers cache:", error);
@@ -496,20 +505,22 @@ class ComprehensiveSheetsService {
     try {
       // Check cache first
       const cachedHeaders = this.headersCache.get(tabName) || [];
-      
+
       // If headers match, no need to update
-      if (cachedHeaders.length === headers.length && 
-          JSON.stringify(cachedHeaders) === JSON.stringify(headers)) {
+      if (
+        cachedHeaders.length === headers.length &&
+        JSON.stringify(cachedHeaders) === JSON.stringify(headers)
+      ) {
         return true;
       }
-      
+
       // Check if tab exists
       const spreadsheet = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId
+        spreadsheetId: this.spreadsheetId,
       });
 
       const tabExists = spreadsheet.data.sheets.some(
-        sheet => sheet.properties.title === tabName
+        (sheet) => sheet.properties.title === tabName
       );
 
       if (!tabExists) {
@@ -521,12 +532,12 @@ class ComprehensiveSheetsService {
               {
                 addSheet: {
                   properties: {
-                    title: tabName
-                  }
-                }
-              }
-            ]
-          }
+                    title: tabName,
+                  },
+                },
+              },
+            ],
+          },
         });
         console.log(`📋 Created new tab: ${tabName}`);
       }
@@ -538,16 +549,15 @@ class ComprehensiveSheetsService {
         range: range,
         valueInputOption: "RAW",
         resource: {
-          values: [headers]
-        }
+          values: [headers],
+        },
       });
-      
+
       // Update cache
       this.headersCache.set(tabName, headers);
       console.log(`📋 Set headers for tab: ${tabName}`);
-      
+
       return true;
-      
     } catch (error) {
       console.error(`❌ Error ensuring headers for ${tabName}:`, error);
       return false;
@@ -561,9 +571,9 @@ class ComprehensiveSheetsService {
     try {
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
-        range: `${tabName}!A:A`
+        range: `${tabName}!A:A`,
       });
-      
+
       const values = response.data.values || [];
       return values.length;
     } catch (error) {
@@ -578,10 +588,12 @@ class ComprehensiveSheetsService {
   async getSheetId(tabName) {
     try {
       const response = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId
+        spreadsheetId: this.spreadsheetId,
       });
-      
-      const sheet = response.data.sheets.find(s => s.properties.title === tabName);
+
+      const sheet = response.data.sheets.find(
+        (s) => s.properties.title === tabName
+      );
       return sheet ? sheet.properties.sheetId : null;
     } catch (error) {
       console.error(`❌ Error getting sheet ID for ${tabName}:`, error);
@@ -606,7 +618,7 @@ class ComprehensiveSheetsService {
    * Get statistics from sheets
    */
   async getStatistics() {
-    if (!await this.initialize()) {
+    if (!(await this.initialize())) {
       return null;
     }
 
@@ -616,34 +628,39 @@ class ComprehensiveSheetsService {
         totalAmount: 0,
         companies: new Set(),
         documentTypes: new Set(),
-        dateRange: { start: null, end: null }
+        dateRange: { start: null, end: null },
       };
 
       // Get data from main invoices tab
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
-        range: "Invoices!A:AC"
+        range: "Invoices!A:AC",
       });
 
       const rows = response.data.values || [];
-      if (rows.length > 1) { // Skip header row
+      if (rows.length > 1) {
+        // Skip header row
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           stats.totalInvoices++;
-          
-          if (row[8]) { // Total amount column
+
+          if (row[8]) {
+            // Total amount column
             stats.totalAmount += parseFloat(row[8]) || 0;
           }
-          
-          if (row[3]) { // Company column
+
+          if (row[3]) {
+            // Company column
             stats.companies.add(row[3]);
           }
-          
-          if (row[2]) { // Document type column
+
+          if (row[2]) {
+            // Document type column
             stats.documentTypes.add(row[2]);
           }
-          
-          if (row[7]) { // Date column
+
+          if (row[7]) {
+            // Date column
             const date = new Date(row[7]);
             if (!stats.dateRange.start || date < stats.dateRange.start) {
               stats.dateRange.start = date;
@@ -661,11 +678,10 @@ class ComprehensiveSheetsService {
         uniqueCompanies: stats.companies.size,
         documentTypes: Array.from(stats.documentTypes),
         dateRange: {
-          start: stats.dateRange.start?.toISOString().split('T')[0] || 'N/A',
-          end: stats.dateRange.end?.toISOString().split('T')[0] || 'N/A'
-        }
+          start: stats.dateRange.start?.toISOString().split("T")[0] || "N/A",
+          end: stats.dateRange.end?.toISOString().split("T")[0] || "N/A",
+        },
       };
-      
     } catch (error) {
       console.error("❌ Error getting statistics:", error);
       return null;
