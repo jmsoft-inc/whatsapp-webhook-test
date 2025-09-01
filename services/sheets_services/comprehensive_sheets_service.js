@@ -9,7 +9,7 @@ const { google } = require("googleapis");
 class ComprehensiveSheetsService {
   constructor() {
     this.spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-    this.credentials = process.env.GOOGLE_SHEETS_CREDENTIALS;
+    this.credentialsFile = process.env.GOOGLE_SHEETS_CREDENTIALS_FILE;
     this.sheets = null;
     this.auth = null;
     this.headersCache = new Map(); // Cache for headers to avoid repeated API calls
@@ -20,7 +20,7 @@ class ComprehensiveSheetsService {
    * Initialize Google Sheets client
    */
   async initialize() {
-    if (!this.spreadsheetId || !this.credentials) {
+    if (!this.spreadsheetId || !this.credentialsFile) {
       console.error("❌ Missing Google Sheets environment variables");
       return false;
     }
@@ -30,7 +30,15 @@ class ComprehensiveSheetsService {
     }
 
     try {
-      const credentials = JSON.parse(this.credentials);
+      const fs = require("fs");
+      const path = require("path");
+      const credentialsPath = path.resolve(
+        __dirname,
+        "../../../config/credentials",
+        this.credentialsFile
+      );
+      const credentials = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
+
       this.auth = new google.auth.GoogleAuth({
         credentials: credentials,
         scopes: ["https://www.googleapis.com/auth/spreadsheets"],
@@ -714,14 +722,14 @@ class ComprehensiveSheetsService {
         "Betaalmethode",
         "Items",
         "Betrouwbaarheid",
-        "Notities"
+        "Notities",
       ];
 
       await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.spreadsheetId,
         range: "Invoices!A1:N1",
         valueInputOption: "RAW",
-        resource: { values: [mainHeaders] }
+        resource: { values: [mainHeaders] },
       });
 
       // Setup items tab headers
@@ -734,14 +742,14 @@ class ComprehensiveSheetsService {
         "BTW percentage",
         "BTW bedrag",
         "Korting",
-        "Bonus"
+        "Bonus",
       ];
 
       await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.spreadsheetId,
         range: "Items!A1:I1",
         valueInputOption: "RAW",
-        resource: { values: [itemsHeaders] }
+        resource: { values: [itemsHeaders] },
       });
 
       // Setup analysis tab headers
@@ -755,19 +763,18 @@ class ComprehensiveSheetsService {
         "Loyalty Info",
         "Store Info",
         "Document Info",
-        "Processing Date"
+        "Processing Date",
       ];
 
       await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.spreadsheetId,
-        range: "Analysis!A1:J1",
+        range: "Comprehensive Analysis!A1:J1",
         valueInputOption: "RAW",
-        resource: { values: [analysisHeaders] }
+        resource: { values: [analysisHeaders] },
       });
 
       console.log("✅ Headers setup completed for all tabs");
       return true;
-
     } catch (error) {
       console.error("❌ Error setting up headers:", error);
       return false;

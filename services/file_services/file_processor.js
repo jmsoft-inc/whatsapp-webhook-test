@@ -75,6 +75,88 @@ async function saveReceiptFile(mediaUrl, invoiceNumber, mimeType) {
 }
 
 /**
+ * Download file from WhatsApp using media ID
+ */
+async function downloadWhatsAppFile(mediaId, filename) {
+  try {
+    console.log(`📥 Downloading WhatsApp file: ${mediaId}`);
+
+    // Get WhatsApp access token
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    if (!accessToken) {
+      throw new Error("WhatsApp access token not configured");
+    }
+
+    // Get media URL from WhatsApp
+    const mediaUrl = `https://graph.facebook.com/v18.0/${mediaId}`;
+    const response = await axios.get(mediaUrl, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.data || !response.data.url) {
+      throw new Error("Failed to get media URL from WhatsApp");
+    }
+
+    console.log(`📥 Media URL obtained: ${response.data.url}`);
+
+    // Download the actual file
+    const fileResponse = await axios.get(response.data.url, {
+      responseType: "arraybuffer",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    // Determine file extension based on filename or MIME type
+    const fileExtension = path.extname(filename) || ".bin";
+
+    // Generate unique filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const uniqueFilename = `whatsapp_${timestamp}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}${fileExtension}`;
+    const filepath = path.join(STORAGE_DIR, uniqueFilename);
+
+    // Save file to disk
+    fs.writeFileSync(filepath, fileResponse.data);
+
+    console.log(`✅ WhatsApp file downloaded: ${filepath}`);
+    console.log(`📊 File size: ${fileResponse.data.length} bytes`);
+
+    return {
+      success: true,
+      path: filepath,
+      filename: uniqueFilename,
+      originalName: filename,
+      size: fileResponse.data.length,
+      extension: fileExtension,
+    };
+  } catch (error) {
+    console.error(`❌ Error downloading WhatsApp file:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Clean up temporary file
+ */
+async function cleanupFile(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log(`🧹 Cleaned up temporary file: ${filePath}`);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error(`❌ Error cleaning up file:`, error.message);
+    return false;
+  }
+}
+
+/**
  * Get file extension based on MIME type
  */
 function getFileExtension(mimeType) {
@@ -576,6 +658,8 @@ function createReceiptFilesList() {
 
 module.exports = {
   saveReceiptFile,
+  downloadWhatsAppFile,
+  cleanupFile,
   extractTextFromFile,
   getReceiptFileInfo,
   listReceiptFiles,
