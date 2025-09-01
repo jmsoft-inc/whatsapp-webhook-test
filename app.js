@@ -32,6 +32,9 @@ const {
 // Import admin commands
 const { processAdminCommand } = require("./services/admin_commands");
 
+// Import version management
+const { createVersionMessage } = require("./services/version_management");
+
 // Import image storage (legacy support)
 const {
   saveReceiptImage,
@@ -299,26 +302,26 @@ async function showMainMenu(from) {
       type: "list",
       header: {
         type: "text",
-        text: "🧾 AI Invoice Processor",
+        text: "JMSoft AI Agents",
       },
       body: {
-        text: "Welkom bij JMSoft AI Agents! 🤖\n\nIk ben je persoonlijke assistent voor het verwerken van facturen en bonnetjes. Van welke service wil je gebruik maken?\n\nMaak een keuze uit het menu hieronder:",
+        text: "Ik ben je persoonlijke assistent voor verschillende werkzaamheden en verwerkingen. Maak hieronder een keuze uit het menu.",
       },
       action: {
         button: "Menu openen",
         sections: [
           {
-            title: "Factuur Verwerking",
+            title: "Invoice Agent",
             rows: [
               {
                 id: "option_1",
-                title: "📄 Meerdere facturen",
-                description: "Verwerk meerdere facturen tegelijk",
+                title: "📄 Meerdere facturen/bonnetjes verwerken",
+                description: "Verwerk meerdere documenten tegelijk in batch",
               },
               {
                 id: "option_2",
-                title: "📋 1 factuur",
-                description: "Verwerk één factuur",
+                title: "📋 1 factuur/bonnetje verwerken",
+                description: "Verwerk één document individueel",
               },
             ],
           },
@@ -327,13 +330,13 @@ async function showMainMenu(from) {
             rows: [
               {
                 id: "option_3",
-                title: "ℹ️ Info",
-                description: "Meer informatie over JMSoft AI Agents",
+                title: "ℹ️ Informatie",
+                description: "Meer informatie over JMSoft AI Agents en versie",
               },
               {
                 id: "option_4",
                 title: "🔧 Admin",
-                description: "Beheer Google Sheets en data",
+                description: "Beheer Google Sheets, data en systeem instellingen",
               },
             ],
           },
@@ -361,15 +364,23 @@ async function handleInitialState(from, text, session) {
   ) {
     // Option 1: Multiple invoices
     session.multipleMode = true;
-    const message = `📸 *Optie 1: Meerdere facturen/bonnetjes*
+    const message = `📸 *Optie 1: Meerdere facturen/bonnetjes verwerken*
 
-Oke, stuur nu alle foto's tegelijkertijd in dan verwerk ik ze in de Google Sheet.
+✅ *Batch Processing Mode Activated*
 
-*Stuur alle foto's van je facturen/bonnetjes*
+Je kunt nu meerdere documenten tegelijk verwerken. Dit is ideaal voor:
+• Meerdere bonnetjes van één winkelbezoek
+• Verschillende facturen van verschillende leveranciers
+• Bulk verwerking van administratieve documenten
 
-Na het ontvangen van alle facturen geef ik je de belangrijkste kenmerken terug van het factuur en de locatie waar je de sheet kunt vinden.
+📋 *Hoe het werkt:*
+1. Stuur alle foto's/PDF's van je documenten
+2. Ik verwerk ze één voor één
+3. Na elk document krijg je een bevestiging
+4. Stuur 'klaar' wanneer je alle documenten hebt ingestuurd
+5. Je krijgt een overzicht van alle verwerkte documenten
 
-*Of stuur 'menu' om terug te gaan naar het hoofdmenu.*`;
+*Stuur nu je eerste document of typ 'menu' om terug te gaan.*`;
 
     await sendWhatsAppMessage(from, message);
     session.state = "waiting_for_invoice";
@@ -381,15 +392,23 @@ Na het ontvangen van alle facturen geef ik je de belangrijkste kenmerken terug v
   ) {
     // Option 2: Single invoice
     session.multipleMode = false;
-    const message = `📸 *Optie 2: 1 factuur/bonnetje*
+    const message = `📸 *Optie 2: 1 factuur/bonnetje verwerken*
 
-Oke, stuur je factuur in en dan verwerk ik hem in de Google Sheet.
+✅ *Single Document Processing Mode Activated*
 
-*Stuur een foto van je factuur/bonnetje*
+Je kunt nu één document verwerken. Dit is ideaal voor:
+• Één bonnetje of factuur
+• Snelle verwerking van losse documenten
+• Testen van nieuwe document types
 
-Na het ontvangen van het factuur geef ik je de belangrijkste kenmerken terug van het factuur en de locatie waar je de sheet kunt vinden.
+📋 *Hoe het werkt:*
+1. Stuur één foto/PDF van je document
+2. Ik verwerk het document direct
+3. Je krijgt een gedetailleerde bevestiging
+4. Data wordt opgeslagen in Google Sheets
+5. Je krijgt een link naar de spreadsheet
 
-*Of stuur 'menu' om terug te gaan naar het hoofdmenu.*`;
+*Stuur nu je document of typ 'menu' om terug te gaan.*`;
 
     await sendWhatsAppMessage(from, message);
     session.state = "waiting_for_invoice";
@@ -400,16 +419,8 @@ Na het ontvangen van het factuur geef ik je de belangrijkste kenmerken terug van
     text === "option_3"
   ) {
     // Option 3: Information
-    const infoMessage = `📋 *JMSoft AI Agents*
-
-Helaas zijn er nog niet meerdere AI Agents beschikbaar die je verder kunnen helpen. 
-
-*JMSoft is druk bezig met het ontwikkelen van nieuwe AI Agents* die je kunnen ondersteunen bij verschillende taken.
-
-*Wil je meer weten of heb je vragen?*
-Neem contact op via: *JMSoft.com*`;
-
-    await sendWhatsAppMessage(from, infoMessage);
+    const versionMessage = createVersionMessage();
+    await sendWhatsAppMessage(from, versionMessage);
 
     // Show menu again after info
     await showMainMenu(from);
@@ -426,11 +437,13 @@ Neem contact op via: *JMSoft.com*`;
 Hier zijn de beschikbare admin commando's:
 
 📋 *Available Commands:*
-• \`/clear\` - Clear all data from sheets
-• \`/stats\` - Show sheets statistics  
-• \`/reset\` - Reset headers and formatting
-• \`/delete INV-xxx\` - Delete specific invoice
-• \`/help\` - Show this help
+1. \`/clear\` - Clear all data from sheets
+2. \`/stats\` - Show sheets statistics  
+3. \`/reset\` - Reset headers and formatting
+4. \`/delete INV-xxx\` - Delete specific invoice
+5. \`/status\` - Show system status
+6. \`/performance\` - Show performance metrics
+7. \`/help\` - Show this help
 
 💡 *Usage:* Just type the command in WhatsApp
 Example: \`/clear\` or \`/delete INV-1234567890-123\`
