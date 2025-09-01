@@ -4,7 +4,13 @@ const axios = require("axios");
 const { google } = require("googleapis");
 const path = require("path");
 
-// Import improved invoice processing
+// Import comprehensive invoice analysis library
+const InvoiceAnalysisLibrary = require("./services/invoice_analysis_library");
+
+// Import comprehensive sheets service
+const ComprehensiveSheetsService = require("./services/comprehensive_sheets_service");
+
+// Import improved invoice processing (legacy support)
 const {
   generateInvoiceNumber,
   extractTextFromImage,
@@ -13,7 +19,7 @@ const {
   setupGoogleSheetsHeaders,
 } = require("./services/improved_invoice_processing");
 
-// Import professional invoice processing
+// Import professional invoice processing (legacy support)
 const {
   createProfessionalInvoiceResponse,
   saveProfessionalInvoiceToSheets,
@@ -75,6 +81,12 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 // Google Sheets configuration
 const GOOGLE_SHEETS_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
 const GOOGLE_SHEETS_CREDENTIALS = process.env.GOOGLE_SHEETS_CREDENTIALS;
+
+// Initialize comprehensive invoice analysis library
+const invoiceLibrary = new InvoiceAnalysisLibrary();
+
+// Initialize comprehensive sheets service
+const sheetsService = new ComprehensiveSheetsService();
 
 // User session management
 const userSessions = new Map();
@@ -639,7 +651,7 @@ async function processFileMessage(message, fileType) {
       return;
     }
 
-    // Extract text from file
+    // Extract text from file (for compatibility with existing code)
     const extractedText = await extractTextFromFile(
       fileResult.filepath,
       mimeType
@@ -667,44 +679,33 @@ async function processFileMessage(message, fileType) {
       return;
     }
 
-    // Determine document type and process accordingly
-    let invoiceData;
-    let documentType = "unknown";
+    // Use comprehensive invoice analysis library for all document types
+    console.log("🔍 Starting comprehensive document analysis...");
 
-    if (isProfessionalInvoice(extractedText)) {
-      console.log("📄 Processing as professional invoice...");
-      documentType = "professional_invoice";
-      invoiceData = createProfessionalInvoiceResponse(
-        extractedText,
-        invoiceNumber
+    // Analyze document with the new library
+    const analysisResult = await invoiceLibrary.analyzeDocument(
+      fileResult.filepath,
+      {
+        invoiceNumber,
+        userPhone: from,
+        sessionMode: session.multipleMode ? "batch" : "single",
+      }
+    );
+
+    console.log("📊 Analysis result:", analysisResult);
+
+    if (!analysisResult.success) {
+      await sendWhatsAppMessage(
+        from,
+        `❌ Kon het document niet analyseren: ${analysisResult.error}\n\n💡 Probeer een andere foto van het document te sturen.`
       );
-    } else if (isReceipt(extractedText)) {
-      console.log("🧾 Processing as receipt...");
-      documentType = "receipt";
-      if (OPENAI_API_KEY) {
-        console.log("🤖 Processing with AI...");
-        invoiceData = await processWithAI(extractedText, invoiceNumber);
-      } else {
-        console.log("📝 Using fallback processing...");
-        const {
-          createFallbackResponse,
-        } = require("./services/improved_invoice_processing");
-        invoiceData = createFallbackResponse(extractedText, invoiceNumber);
-      }
-    } else {
-      console.log("❓ Unknown document type, trying receipt processing...");
-      documentType = "receipt";
-      if (OPENAI_API_KEY) {
-        console.log("🤖 Processing with AI...");
-        invoiceData = await processWithAI(extractedText, invoiceNumber);
-      } else {
-        console.log("📝 Using fallback processing...");
-        const {
-          createFallbackResponse,
-        } = require("./services/improved_invoice_processing");
-        invoiceData = createFallbackResponse(extractedText, invoiceNumber);
-      }
+      return;
     }
+
+    // Extract the analysis data
+    const invoiceData = analysisResult.analysis;
+    const documentType = analysisResult.documentType;
+    const finalExtractedText = analysisResult.extractedText;
 
     console.log(`📄 Document type: ${documentType}`);
     console.log("📊 Processed data:", invoiceData);
@@ -717,47 +718,19 @@ async function processFileMessage(message, fileType) {
       return;
     }
 
-    // Save data to Google Sheets based on document type
-    let saved;
-    if (documentType === "professional_invoice") {
-      saved = await saveProfessionalInvoiceToSheets(invoiceData);
-    } else {
-      saved = await saveDetailedInvoiceToSheets(invoiceData);
-    }
+    // Save data to Google Sheets using comprehensive service
+    const saved = await sheetsService.saveComprehensiveAnalysis(
+      invoiceData,
+      invoiceNumber
+    );
     console.log("💾 Saved to sheets:", saved);
 
     if (!saved) {
-      // Try to setup Google Sheets tabs first
-      console.log("🔧 Attempting to setup Google Sheets tabs...");
-      try {
-        await setupGoogleSheetsHeaders();
-        // Try saving again
-        const retrySaved = await saveDetailedInvoiceToSheets(invoiceData);
-        if (retrySaved) {
-          console.log("✅ Successfully saved after tab setup");
-        } else {
-          await sendWhatsAppMessage(
-            from,
-            "❌ Kon data niet opslaan in Google Sheets. De Google Sheets tabs worden mogelijk nog opgezet. Probeer het over een paar minuten opnieuw."
-          );
-
-          // Show menu even if save failed
-          await showMainMenu(from);
-          session.state = "initial";
-          return;
-        }
-      } catch (setupError) {
-        console.error("❌ Error setting up Google Sheets tabs:", setupError);
-        await sendWhatsAppMessage(
-          from,
-          "❌ Kon data niet opslaan in Google Sheets. Probeer het opnieuw of neem contact op met support."
-        );
-
-        // Show menu even if save failed
-        await showMainMenu(from);
-        session.state = "initial";
-        return;
-      }
+      await sendWhatsAppMessage(
+        from,
+        "❌ Kon data niet opslaan in Google Sheets. Probeer het later opnieuw."
+      );
+      return;
     }
 
     // Add to session
@@ -790,16 +763,23 @@ async function processFileMessage(message, fileType) {
 }
 
 async function sendSingleInvoiceResponse(from, invoiceData, invoiceNumber) {
-  const responseMessage = `📄 *Factuur ${invoiceNumber} Verwerkt!*
+  // Create comprehensive response using the new analysis structure
+  const responseMessage = `📄 *Document ${invoiceNumber} Verwerkt!*
 
-🔢 *Factuurnummer:* ${invoiceData.invoice_number || "Onbekend"}
-🏪 *Bedrijf:* ${invoiceData.company || "Onbekend"}
-💰 *Totaalbedrag:* €${invoiceData.total_amount || 0}
-📅 *Datum:* ${invoiceData.date || "Onbekend"}
-🕐 *Tijd:* ${invoiceData.time || "Onbekend"}
-📊 *Items:* ${invoiceData.item_count || 0} artikelen
-💳 *Betaalmethode:* ${invoiceData.payment_method || "Onbekend"}
-🎯 *Betrouwbaarheid:* ${invoiceData.confidence || 0}%
+🔍 *Document Type:* ${invoiceData.document_info?.type || "Onbekend"}
+🏪 *Bedrijf:* ${invoiceData.company_info?.name || "Onbekend"}
+💰 *Totaalbedrag:* €${invoiceData.financial_info?.total_amount || 0}
+📅 *Datum:* ${invoiceData.transaction_info?.date || "Onbekend"}
+🕐 *Tijd:* ${invoiceData.transaction_info?.time || "Onbekend"}
+📊 *Items:* ${invoiceData.item_summary?.total_items || 0} artikelen
+💳 *Betaalmethode:* ${invoiceData.financial_info?.payment_method || "Onbekend"}
+🎯 *Betrouwbaarheid:* ${invoiceData.document_info?.confidence || 0}%
+
+*Extra Details:*
+• BTW 9%: €${invoiceData.financial_info?.tax_9 || 0}
+• BTW 21%: €${invoiceData.financial_info?.tax_21 || 0}
+• Korting: €${invoiceData.financial_info?.discount_amount || 0}
+• Bonus: €${invoiceData.financial_info?.bonus_amount || 0}
 
 ✅ *Data opgeslagen in Google Sheets*
 
@@ -811,61 +791,51 @@ async function sendSingleInvoiceResponse(from, invoiceData, invoiceNumber) {
 async function sendSingleInvoiceSummary(from, invoiceData) {
   const sheetUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEETS_SPREADSHEET_ID}/edit`;
 
-  // Determine if this is a professional invoice or receipt
-  const isProfessional = invoiceData.document_type === "professional_invoice";
+  // Create comprehensive summary using the new analysis structure
+  const responseMessage = `🧾 *Document Verwerking Voltooid!*
 
-  let responseMessage;
+🔍 *Document Type:* ${invoiceData.document_info?.type || "Onbekend"}
+🏪 *Bedrijf:* ${invoiceData.company_info?.name || "Onbekend"}
+💰 *Totaalbedrag:* €${invoiceData.financial_info?.total_amount || 0}
+📅 *Datum:* ${invoiceData.transaction_info?.date || "Onbekend"}
+🕐 *Tijd:* ${invoiceData.transaction_info?.time || "Onbekend"}
+📊 *Items:* ${invoiceData.item_summary?.total_items || 0} artikelen
+💳 *Betaalmethode:* ${invoiceData.financial_info?.payment_method || "Onbekend"}
+🎯 *Betrouwbaarheid:* ${invoiceData.document_info?.confidence || 0}%
 
-  if (isProfessional) {
-    responseMessage = `📄 *Professionele Factuur Verwerking Voltooid!*
+*Financiële Details:*
+• Subtotaal: €${invoiceData.financial_info?.subtotal || 0}
+• BTW 9%: €${invoiceData.financial_info?.tax_9 || 0}
+• BTW 21%: €${invoiceData.financial_info?.tax_21 || 0}
+• Korting: €${invoiceData.financial_info?.discount_amount || 0}
+• Bonus: €${invoiceData.financial_info?.bonus_amount || 0}
+• Koopzegels: €${invoiceData.financial_info?.koopzegels_amount || 0}
 
-🔢 *Factuurnummer:* ${invoiceData.invoice_reference || "Onbekend"}
-🏢 *Bedrijf:* ${invoiceData.company_name || "Onbekend"}
-💰 *Totaalbedrag:* €${invoiceData.total_amount || 0}
-📅 *Factuurdatum:* ${invoiceData.invoice_date || "Onbekend"}
-⏰ *Vervaldatum:* ${invoiceData.due_date || "Onbekend"}
-📊 *Items:* ${invoiceData.items?.length || 0} artikelen
-💳 *Betaalmethode:* ${invoiceData.payment_method || "Factuur"}
-🎯 *BTW Percentage:* ${invoiceData.btw_percentage || 0}%
+*Bedrijfsinformatie:*
+• Adres: ${invoiceData.company_info?.address || "Onbekend"}
+• Telefoon: ${invoiceData.company_info?.phone || "Onbekend"}
 
-*Leverancier:*
-• ${invoiceData.supplier_name || "Onbekend"}
-• ${invoiceData.supplier_address || "Onbekend"}
-• ${invoiceData.supplier_phone || "Onbekend"}
+*Transactie Details:*
+• Transactie ID: ${invoiceData.transaction_info?.transaction_id || "Onbekend"}
+• Terminal: ${invoiceData.transaction_info?.terminal_id || "Onbekend"}
+• Merchant: ${invoiceData.transaction_info?.merchant_id || "Onbekend"}
 
-✅ *Data opgeslagen in Google Sheets*
-📊 *Bekijk de spreadsheet:* ${sheetUrl}
-
-📋 *Twee tabs beschikbaar:*
-• *Invoices:* Overzicht van alle facturen
-• *Detail Invoices:* Gedetailleerde productinformatie per factuur
-
-*Bedankt voor het gebruik van JMSoft AI Invoice Processor!*`;
-  } else {
-    responseMessage = `🧾 *Bonnetje Verwerking Voltooid!*
-
-🔢 *Factuurnummer:* ${invoiceData.invoice_number || "Onbekend"}
-🏪 *Bedrijf:* ${invoiceData.company || "Onbekend"}
-💰 *Totaalbedrag:* €${invoiceData.total_amount || 0}
-📅 *Datum:* ${invoiceData.date || "Onbekend"}
-🕐 *Tijd:* ${invoiceData.time || "Onbekend"}
-📊 *Items:* ${invoiceData.item_count || 0} artikelen
-💳 *Betaalmethode:* ${invoiceData.payment_method || "Onbekend"}
-🎯 *Betrouwbaarheid:* ${invoiceData.confidence || 0}%
+*Loyalty:*
+• Bonuskaart: ${invoiceData.loyalty_info?.bonuskaart || "Onbekend"}
+• Air Miles: ${invoiceData.loyalty_info?.air_miles || "Onbekend"}
 
 ✅ *Data opgeslagen in Google Sheets*
 📊 *Bekijk de spreadsheet:* ${sheetUrl}
 
-📋 *Twee tabs beschikbaar:*
+📋 *Beschikbare tabs:*
 • *Invoices:* Overzicht van alle facturen
 • *Detail Invoices:* Gedetailleerde productinformatie per factuur
 
-*Bedankt voor het gebruik van JMSoft AI Invoice Processor!*`;
-  }
+*Bedankt voor het gebruik van JMSoft AI Document Processor!*`;
 
   await sendWhatsAppMessage(from, responseMessage);
 
-  // Automatically show menu after single invoice processing
+  // Show menu after summary
   await showMainMenu(from);
 }
 
@@ -877,14 +847,14 @@ async function sendMultipleInvoicesSummary(from, session) {
   const companies = new Set();
 
   session.invoices.forEach((invoice) => {
-    totalAmount += parseFloat(invoice.total_amount || 0);
-    totalItems += parseInt(invoice.item_count || 0);
-    if (invoice.company) companies.add(invoice.company);
+    totalAmount += parseFloat(invoice.financial_info?.total_amount || 0);
+    totalItems += parseInt(invoice.item_summary?.total_items || 0);
+    if (invoice.company_info?.name) companies.add(invoice.company_info.name);
   });
 
-  const responseMessage = `📊 *Meerdere Facturen Verwerking Voltooid!*
+  const responseMessage = `📊 *Meerdere Documenten Verwerking Voltooid!*
 
-📄 *Aantal facturen:* ${session.invoices.length}
+📄 *Aantal documenten:* ${session.invoices.length}
 🏪 *Bedrijven:* ${Array.from(companies).join(", ") || "Onbekend"}
 💰 *Totaalbedrag:* €${totalAmount.toFixed(2)}
 📊 *Totaal items:* ${totalItems}
@@ -895,7 +865,7 @@ async function sendMultipleInvoicesSummary(from, session) {
 
 📈 *Batch #${Date.now()}*
 
-*Bedankt voor het gebruik van JMSoft AI Invoice Processor!*`;
+*Bedankt voor het gebruik van JMSoft AI Document Processor!*`;
 
   await sendWhatsAppMessage(from, responseMessage);
 
