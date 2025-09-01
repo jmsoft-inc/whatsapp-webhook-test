@@ -35,6 +35,14 @@ const { processAdminCommand } = require("./services/admin_commands");
 // Import version management
 const { createVersionMessage } = require("./services/version_management");
 
+// Import improved WhatsApp messaging
+const { 
+  sendTextMessage, 
+  sendInteractiveMessage, 
+  sendMediaMessage,
+  testWhatsAppConnection 
+} = require("./services/whatsapp_messaging");
+
 // Import image storage (legacy support)
 const {
   saveReceiptImage,
@@ -944,60 +952,15 @@ async function saveToGoogleSheets(invoiceData) {
   }
 }
 
+// Legacy wrapper functions for backward compatibility
 async function sendWhatsAppMessage(to, message) {
-  try {
-    const response = await axios.post(
-      `${WHATSAPP_API_URL}/${PHONE_NUMBER_ID}/messages`,
-      {
-        messaging_product: "whatsapp",
-        to: to,
-        type: "text",
-        text: {
-          body: message,
-        },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    console.log("WhatsApp message sent:", response.data);
-    return true;
-  } catch (error) {
-    console.error("Error sending WhatsApp message:", error);
-    return false;
-  }
+  const result = await sendTextMessage(to, message);
+  return result.success;
 }
 
 async function sendWhatsAppInteractiveMessage(to, message) {
-  console.log(`📤 sendWhatsAppInteractiveMessage called for user ${to}`);
-  console.log(`📤 Message data:`, JSON.stringify(message, null, 2));
-
-  try {
-    const response = await axios.post(
-      `${WHATSAPP_API_URL}/${PHONE_NUMBER_ID}/messages`,
-      {
-        messaging_product: "whatsapp",
-        to: to,
-        type: "interactive",
-        interactive: message.interactive,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${ACCESS_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    console.log("WhatsApp interactive message sent:", response.data);
-    return true;
-  } catch (error) {
-    console.error("Error sending WhatsApp interactive message:", error);
-    return false;
-  }
+  const result = await sendInteractiveMessage(to, message);
+  return result.success;
 }
 
 // Test endpoint for debugging
