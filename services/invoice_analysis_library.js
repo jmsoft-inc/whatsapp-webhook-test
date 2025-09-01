@@ -302,8 +302,14 @@ class InvoiceAnalysisLibrary {
    */
   async processWithAI(text, documentType, options = {}) {
     if (!process.env.OPENAI_API_KEY) {
-      console.log("⚠️ OpenAI API key not configured, using intelligent fallback analysis");
-      return this.createIntelligentFallbackAnalysis(text, documentType, new Error("No OpenAI API key"));
+      console.log(
+        "⚠️ OpenAI API key not configured, using intelligent fallback analysis"
+      );
+      return this.createIntelligentFallbackAnalysis(
+        text,
+        documentType,
+        new Error("No OpenAI API key")
+      );
     }
 
     try {
@@ -421,8 +427,6 @@ class InvoiceAnalysisLibrary {
           error.response.data
         );
       }
-      
-      // Use intelligent fallback instead of generic fallback
       return this.createIntelligentFallbackAnalysis(text, documentType, error);
     }
   }
@@ -564,8 +568,14 @@ class InvoiceAnalysisLibrary {
    * Create fallback analysis when AI is not available
    */
   createFallbackAnalysis(text, documentType) {
-    console.log(`📝 Redirecting to intelligent fallback analysis for ${documentType}`);
-    return this.createIntelligentFallbackAnalysis(text, documentType, new Error("Fallback analysis requested"));
+    console.log(
+      `📝 Redirecting to intelligent fallback analysis for ${documentType}`
+    );
+    return this.createIntelligentFallbackAnalysis(
+      text,
+      documentType,
+      new Error("Fallback analysis requested")
+    );
   }
 
   /**
@@ -650,272 +660,6 @@ class InvoiceAnalysisLibrary {
       notes.push(`AI response available but not parseable`);
     }
 
-    return notes.join(" | ");
-  }
-
-  /**
-   * Extract actual data from text using pattern matching
-   */
-  extractActualDataFromText(text, documentType) {
-    if (!text) return {};
-    
-    const lowerText = text.toLowerCase();
-    const extracted = {
-      confidence: 70,
-      company: {},
-      transaction: {},
-      financial: {},
-      items: [],
-      itemSummary: {},
-      btw: {},
-      store: {},
-      bank: {},
-    };
-
-    // Extract company information with better pattern matching
-    if (lowerText.includes("albert heijn") || lowerText.includes("ah")) {
-      extracted.company.name = "Albert Heijn";
-      extracted.confidence += 15;
-    } else if (lowerText.includes("jumbo")) {
-      extracted.company.name = "Jumbo";
-      extracted.confidence += 15;
-    } else if (lowerText.includes("lidl")) {
-      extracted.company.name = "Lidl";
-      extracted.confidence += 15;
-    } else if (lowerText.includes("studiekosten")) {
-      extracted.company.name = "Studiekosten";
-      extracted.confidence += 15;
-    } else if (lowerText.includes("rompslomp")) {
-      extracted.company.name = "Rompslomp";
-      extracted.confidence += 15;
-    } else if (lowerText.includes("aldi")) {
-      extracted.company.name = "Aldi";
-      extracted.confidence += 15;
-    } else if (lowerText.includes("etos") || lowerText.includes("kruidvat")) {
-      extracted.company.name = lowerText.includes("etos") ? "Etos" : "Kruidvat";
-      extracted.confidence += 15;
-    }
-
-    // Extract dates with better patterns
-    const datePatterns = [
-      /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/g,
-      /(\d{4})-(\d{2})-(\d{2})/g,
-      /(\d{2})-(\d{2})-(\d{4})/g,
-      /(\d{2})\/(\d{2})\/(\d{4})/g,
-      /(\d{1,2})\s+(jan|feb|mar|apr|mei|jun|jul|aug|sep|okt|nov|dec)\s+(\d{4})/gi,
-    ];
-
-    for (const pattern of datePatterns) {
-      const matches = text.match(pattern);
-      if (matches && matches.length > 0) {
-        // Find the most likely date (not from metadata)
-        const likelyDate = matches.find(match => {
-          const matchLower = match.toLowerCase();
-          // Avoid metadata dates like file creation dates
-          return !matchLower.includes("pdf") && !matchLower.includes("jpeg") && 
-                 !matchLower.includes("jpg") && !matchLower.includes("creation");
-        });
-        
-        if (likelyDate) {
-          extracted.transaction.date = likelyDate;
-          extracted.confidence += 15;
-          break;
-        }
-      }
-    }
-
-    // Extract times
-    const timeMatches = text.match(/(\d{1,2}):(\d{2})/g);
-    if (timeMatches && timeMatches.length > 0) {
-      // Find time that looks like a transaction time (not metadata)
-      const likelyTime = timeMatches.find(time => {
-        const timeLower = time.toLowerCase();
-        return !timeLower.includes("pdf") && !timeLower.includes("jpeg") && 
-               !timeLower.includes("jpg") && !timeLower.includes("creation");
-      });
-      
-      if (likelyTime) {
-        extracted.transaction.time = likelyTime;
-        extracted.confidence += 10;
-      }
-    }
-
-    // Extract amounts with better patterns
-    const amountPatterns = [
-      /€?\s*(\d+[.,]\d{2})/g,
-      /(\d+[.,]\d{2})\s*€/g,
-      /totaal\s*:?\s*€?\s*(\d+[.,]\d{2})/gi,
-      /eindtotaal\s*:?\s*€?\s*(\d+[.,]\d{2})/gi,
-      /bedrag\s*:?\s*€?\s*(\d+[.,]\d{2})/gi,
-    ];
-
-    let allAmounts = [];
-    for (const pattern of amountPatterns) {
-      const matches = text.match(pattern);
-      if (matches && matches.length > 0) {
-        allAmounts = allAmounts.concat(matches);
-      }
-    }
-
-    if (allAmounts.length > 0) {
-      // Convert to numbers and find the largest (likely total)
-      const numericAmounts = allAmounts.map(amt => {
-        const cleanAmount = amt.replace(/[€,\s]/g, "").replace(",", ".");
-        const num = parseFloat(cleanAmount);
-        return isNaN(num) ? 0 : num;
-      }).filter(amt => amt > 0);
-
-      if (numericAmounts.length > 0) {
-        extracted.financial.total_amount = Math.max(...numericAmounts);
-        extracted.financial.currency = "EUR";
-        extracted.confidence += 20;
-        
-        // Also store all amounts for BTW calculation
-        extracted.financial.all_amounts = numericAmounts;
-      }
-    }
-
-    // Extract BTW/VAT with better patterns
-    const btwPatterns = [
-      /btw\s*:?\s*€?\s*(\d+[.,]\d{2})/gi,
-      /vat\s*:?\s*€?\s*(\d+[.,]\d{2})/gi,
-      /(\d+[.,]\d{2})\s*btw/gi,
-      /(\d+[.,]\d{2})\s*vat/gi,
-    ];
-
-    let btwAmounts = [];
-    for (const pattern of btwPatterns) {
-      const matches = text.match(pattern);
-      if (matches && matches.length > 0) {
-        btwAmounts = btwAmounts.concat(matches);
-      }
-    }
-
-    if (btwAmounts.length > 0) {
-      const numericBtw = btwAmounts.map(btw => {
-        const cleanBtw = btw.replace(/[btw:\s€]/gi, "").replace(",", ".");
-        const num = parseFloat(cleanBtw);
-        return isNaN(num) ? 0 : num;
-      }).filter(amt => amt > 0);
-
-      if (numericBtw.length > 0) {
-        extracted.btw.tax_total = numericBtw.reduce((sum, amt) => sum + amt, 0);
-        extracted.confidence += 15;
-      }
-    }
-
-    // Extract items count with better patterns
-    const itemPatterns = [
-      /(\d+)\s*x\s*[€€]?\s*\d+[.,]\d{2}/g,
-      /(\d+)\s*stuks?/gi,
-      /(\d+)\s*items?/gi,
-      /(\d+)\s*artikelen?/gi,
-    ];
-
-    let itemCount = 0;
-    for (const pattern of itemPatterns) {
-      const matches = text.match(pattern);
-      if (matches && matches.length > 0) {
-        itemCount = Math.max(itemCount, ...matches.map(match => {
-          const num = parseInt(match.match(/\d+/)[0]);
-          return isNaN(num) ? 0 : num;
-        }));
-      }
-    }
-
-    if (itemCount > 0) {
-      extracted.itemSummary.total_items = itemCount;
-      extracted.confidence += 10;
-    }
-
-    // Extract payment method
-    if (lowerText.includes("pin") || lowerText.includes("kaart")) {
-      extracted.financial.payment_method = "PIN/Kaart";
-      extracted.confidence += 5;
-    } else if (lowerText.includes("contant") || lowerText.includes("cash")) {
-      extracted.financial.payment_method = "Contant";
-      extracted.confidence += 5;
-    }
-
-    // Extract invoice number
-    const invoicePatterns = [
-      /factuur\s*:?\s*(\d+)/gi,
-      /invoice\s*:?\s*(\d+)/gi,
-      /nummer\s*:?\s*(\d+)/gi,
-      /nr\s*:?\s*(\d+)/gi,
-    ];
-
-    for (const pattern of invoicePatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        extracted.transaction.invoice_number = match[1];
-        extracted.confidence += 5;
-        break;
-      }
-    }
-
-    return extracted;
-  }
-
-  /**
-   * Create intelligent fallback analysis based on document content
-   */
-  createIntelligentFallbackAnalysis(text, documentType, error = null) {
-    console.log(`🧠 Creating intelligent fallback analysis for ${documentType}`);
-    
-    // Extract actual data from text instead of using generic "NB" values
-    const extractedData = this.extractActualDataFromText(text, documentType);
-    
-    const analysis = {
-      document_info: {
-        type: documentType,
-        subtype: this.detectSubtype(text),
-        language: this.detectLanguage(text),
-        confidence: extractedData.confidence || 70,
-      },
-      company_info: extractedData.company || this.extractCompanyInfo(text),
-      transaction_info: extractedData.transaction || this.extractTransactionInfo(text),
-      financial_info: extractedData.financial || this.extractFinancialInfo(text),
-      loyalty_info: extractedData.loyalty || this.extractLoyaltyInfo(text),
-      items: extractedData.items || this.extractItems(text),
-      item_summary: extractedData.itemSummary || this.createItemSummary(text),
-      btw_breakdown: extractedData.btw || this.extractBTWBreakdown(text),
-      store_info: extractedData.store || this.extractStoreInfo(text),
-      bank_info: extractedData.bank || this.extractBankInfo(text),
-      notes: this.createIntelligentNotes(text, documentType, extractedData, error),
-      raw_text: text ? text.substring(0, 50000) : "",
-    };
-
-    return analysis;
-  }
-
-  /**
-   * Create intelligent notes based on extracted data
-   */
-  createIntelligentNotes(text, documentType, extractedData, error) {
-    const notes = [];
-    
-    notes.push(`Intelligent fallback analysis for ${documentType}`);
-    
-    if (extractedData.company.name) notes.push(`✓ Company: ${extractedData.company.name}`);
-    if (extractedData.transaction.date) notes.push(`✓ Date: ${extractedData.transaction.date}`);
-    if (extractedData.transaction.time) notes.push(`✓ Time: ${extractedData.transaction.time}`);
-    if (extractedData.financial.total_amount) notes.push(`✓ Total: €${extractedData.financial.total_amount}`);
-    if (extractedData.btw.tax_total) notes.push(`✓ BTW: €${extractedData.btw.tax_total}`);
-    if (extractedData.itemSummary.total_items) notes.push(`✓ Items: ${extractedData.itemSummary.total_items}`);
-    
-    if (error) {
-      notes.push(`⚠️ AI analysis failed: ${error.message}`);
-    }
-    
-    if (text) {
-      const textPreview = text.length > 200 ? text.substring(0, 200) + "..." : text;
-      notes.push(`Text preview: ${textPreview}`);
-      notes.push(`Full text length: ${text.length} characters`);
-    }
-    
-    notes.push(`Confidence: ${extractedData.confidence}%`);
-    
     return notes.join(" | ");
   }
 
@@ -1608,6 +1352,410 @@ class InvoiceAnalysisLibrary {
     );
 
     return `Text Summary:\n${firstPart}\n\n[... middle content omitted ...]\n\n${lastPart}\n\nFull Text Length: ${text.length} characters`;
+  }
+
+  /**
+   * Extract actual data from text using pattern matching
+   */
+  extractActualDataFromText(text, documentType) {
+    if (!text) return {};
+
+    const lowerText = text.toLowerCase();
+    const extracted = {
+      confidence: 70,
+      company: {},
+      transaction: {},
+      financial: {},
+      items: [],
+      itemSummary: {},
+      btw: {},
+      store: {},
+      bank: {},
+    };
+
+    // Extract company information with better pattern matching
+    if (lowerText.includes("albert heijn") || lowerText.includes("ah")) {
+      extracted.company.name = "Albert Heijn";
+      extracted.confidence += 15;
+    } else if (lowerText.includes("jumbo")) {
+      extracted.company.name = "Jumbo";
+      extracted.confidence += 15;
+    } else if (lowerText.includes("lidl")) {
+      extracted.company.name = "Lidl";
+      extracted.confidence += 15;
+    } else if (lowerText.includes("studiekosten")) {
+      extracted.company.name = "Studiekosten";
+      extracted.confidence += 15;
+    } else if (lowerText.includes("rompslomp")) {
+      extracted.company.name = "Rompslomp";
+      extracted.confidence += 15;
+    } else if (lowerText.includes("aldi")) {
+      extracted.company.name = "Aldi";
+      extracted.confidence += 15;
+    } else if (lowerText.includes("etos") || lowerText.includes("kruidvat")) {
+      extracted.company.name = lowerText.includes("etos") ? "Etos" : "Kruidvat";
+      extracted.confidence += 15;
+    }
+
+    // Extract dates with better patterns
+    const datePatterns = [
+      /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/g,
+      /(\d{4})-(\d{2})-(\d{2})/g,
+      /(\d{2})-(\d{2})-(\d{4})/g,
+      /(\d{2})\/(\d{2})\/(\d{4})/g,
+      /(\d{1,2})\s+(jan|feb|mar|apr|mei|jun|jul|aug|sep|okt|nov|dec)\s+(\d{4})/gi,
+    ];
+
+    for (const pattern of datePatterns) {
+      const matches = text.match(pattern);
+      if (matches && matches.length > 0) {
+        // Find the most likely date (not from metadata)
+        const likelyDate = matches.find((match) => {
+          const matchLower = match.toLowerCase();
+          // Avoid metadata dates like file creation dates
+          return (
+            !matchLower.includes("pdf") &&
+            !matchLower.includes("jpeg") &&
+            !matchLower.includes("jpg") &&
+            !matchLower.includes("creation")
+          );
+        });
+
+        if (likelyDate) {
+          extracted.transaction.date = likelyDate;
+          extracted.confidence += 15;
+          break;
+        }
+      }
+    }
+
+    // Extract times
+    const timeMatches = text.match(/(\d{1,2}):(\d{2})/g);
+    if (timeMatches && timeMatches.length > 0) {
+      // Find time that looks like a transaction time (not metadata)
+      const likelyTime = timeMatches.find((time) => {
+        const timeLower = time.toLowerCase();
+        return (
+          !timeLower.includes("pdf") &&
+          !timeLower.includes("jpeg") &&
+          !timeLower.includes("jpg") &&
+          !timeLower.includes("creation")
+        );
+      });
+
+      if (likelyTime) {
+        extracted.transaction.time = likelyTime;
+        extracted.confidence += 10;
+      }
+    }
+
+    // Extract amounts with better patterns
+    const amountPatterns = [
+      /€?\s*(\d+[.,]\d{2})/g,
+      /(\d+[.,]\d{2})\s*€/g,
+      /totaal\s*:?\s*€?\s*(\d+[.,]\d{2})/gi,
+      /eindtotaal\s*:?\s*€?\s*(\d+[.,]\d{2})/gi,
+      /bedrag\s*:?\s*€?\s*(\d+[.,]\d{2})/gi,
+    ];
+
+    let allAmounts = [];
+    for (const pattern of amountPatterns) {
+      const matches = text.match(pattern);
+      if (matches && matches.length > 0) {
+        allAmounts = allAmounts.concat(matches);
+      }
+    }
+
+    if (allAmounts.length > 0) {
+      // Convert to numbers and find the largest (likely total)
+      const numericAmounts = allAmounts
+        .map((amt) => {
+          const cleanAmount = amt.replace(/[€,\s]/g, "").replace(",", ".");
+          const num = parseFloat(cleanAmount);
+          return isNaN(num) ? 0 : num;
+        })
+        .filter((amt) => amt > 0);
+
+      if (numericAmounts.length > 0) {
+        extracted.financial.total_amount = Math.max(...numericAmounts);
+        extracted.financial.currency = "EUR";
+        extracted.confidence += 20;
+
+        // Also store all amounts for BTW calculation
+        extracted.financial.all_amounts = numericAmounts;
+      }
+    }
+
+    // Extract BTW/VAT with better patterns
+    const btwPatterns = [
+      /btw\s*:?\s*€?\s*(\d+[.,]\d{2})/gi,
+      /vat\s*:?\s*€?\s*(\d+[.,]\d{2})/gi,
+      /(\d+[.,]\d{2})\s*btw/gi,
+      /(\d+[.,]\d{2})\s*vat/gi,
+    ];
+
+    let btwAmounts = [];
+    for (const pattern of btwPatterns) {
+      const matches = text.match(pattern);
+      if (matches && matches.length > 0) {
+        btwAmounts = btwAmounts.concat(matches);
+      }
+    }
+
+    if (btwAmounts.length > 0) {
+      const numericBtw = btwAmounts
+        .map((btw) => {
+          const cleanBtw = btw.replace(/[btw:\s€]/gi, "").replace(",", ".");
+          const num = parseFloat(cleanBtw);
+          return isNaN(num) ? 0 : num;
+        })
+        .filter((amt) => amt > 0);
+
+      if (numericBtw.length > 0) {
+        extracted.btw.tax_total = numericBtw.reduce((sum, amt) => sum + amt, 0);
+        extracted.confidence += 15;
+      }
+    }
+
+    // Extract items count with better patterns
+    const itemPatterns = [
+      /(\d+)\s*x\s*[€€]?\s*\d+[.,]\d{2}/g,
+      /(\d+)\s*stuks?/gi,
+      /(\d+)\s*items?/gi,
+      /(\d+)\s*artikelen?/gi,
+    ];
+
+    let itemCount = 0;
+    for (const pattern of itemPatterns) {
+      const matches = text.match(pattern);
+      if (matches && matches.length > 0) {
+        itemCount = Math.max(
+          itemCount,
+          ...matches.map((match) => {
+            const num = parseInt(match.match(/\d+/)[0]);
+            return isNaN(num) ? 0 : num;
+          })
+        );
+      }
+    }
+
+    if (itemCount > 0) {
+      extracted.itemSummary.total_items = itemCount;
+      extracted.confidence += 10;
+    }
+
+    // Extract payment method
+    if (lowerText.includes("pin") || lowerText.includes("kaart")) {
+      extracted.financial.payment_method = "PIN/Kaart";
+      extracted.confidence += 5;
+    } else if (lowerText.includes("contant") || lowerText.includes("cash")) {
+      extracted.financial.payment_method = "Contant";
+      extracted.confidence += 5;
+    }
+
+    // Extract invoice number
+    const invoicePatterns = [
+      /factuur\s*:?\s*(\d+)/gi,
+      /invoice\s*:?\s*(\d+)/gi,
+      /nummer\s*:?\s*(\d+)/gi,
+      /nr\s*:?\s*(\d+)/gi,
+    ];
+
+    for (const pattern of invoicePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        extracted.transaction.invoice_number = match[1];
+        extracted.confidence += 5;
+        break;
+      }
+    }
+
+    return extracted;
+  }
+
+  /**
+   * Create intelligent notes based on extracted data
+   */
+  createIntelligentNotes(text, documentType, extractedData, error) {
+    const notes = [];
+
+    notes.push(`Intelligent fallback analysis for ${documentType}`);
+
+    if (extractedData.company && extractedData.company.name)
+      notes.push(`✓ Company: ${extractedData.company.name}`);
+    if (extractedData.transaction && extractedData.transaction.date)
+      notes.push(`✓ Date: ${extractedData.transaction.date}`);
+    if (extractedData.transaction && extractedData.transaction.time)
+      notes.push(`✓ Time: ${extractedData.transaction.time}`);
+    if (extractedData.financial && extractedData.financial.total_amount)
+      notes.push(`✓ Total: €${extractedData.financial.total_amount}`);
+    if (extractedData.btw && extractedData.btw.tax_total)
+      notes.push(`✓ BTW: €${extractedData.btw.tax_total}`);
+    if (extractedData.itemSummary && extractedData.itemSummary.total_items)
+      notes.push(`✓ Items: ${extractedData.itemSummary.total_items}`);
+
+    if (error) {
+      notes.push(`⚠️ AI analysis failed: ${error.message}`);
+    }
+
+    if (text) {
+      const textPreview =
+        text.length > 200 ? text.substring(0, 200) + "..." : text;
+      notes.push(`Text preview: ${textPreview}`);
+      notes.push(`Full text length: ${text.length} characters`);
+    }
+
+    notes.push(`Confidence: ${extractedData.confidence || 70}%`);
+
+    return notes.join(" | ");
+  }
+
+  /**
+   * Enhance fallback data when OCR is poor
+   */
+  enhanceFallbackWithDocumentInfo(documentType, text) {
+    const enhanced = {
+      confidence: 75, // Higher confidence for enhanced fallback
+    };
+
+    // Try to extract company from document type or text fragments
+    if (
+      documentType === "albert_heijn_receipt" ||
+      text.toLowerCase().includes("ah")
+    ) {
+      enhanced.company = { name: "Albert Heijn" };
+      enhanced.confidence += 20;
+    } else if (documentType === "unknown_document") {
+      // Try to detect from text fragments
+      const lowerText = text.toLowerCase();
+      if (lowerText.includes("albert") || lowerText.includes("heijn")) {
+        enhanced.company = { name: "Albert Heijn" };
+        enhanced.confidence += 15;
+      } else if (lowerText.includes("jumbo")) {
+        enhanced.company = { name: "Jumbo" };
+        enhanced.confidence += 15;
+      } else if (lowerText.includes("lidl")) {
+        enhanced.company = { name: "Lidl" };
+        enhanced.confidence += 15;
+      } else if (lowerText.includes("studiekosten")) {
+        enhanced.company = { name: "Studiekosten" };
+        enhanced.confidence += 15;
+      } else if (lowerText.includes("rompslomp")) {
+        enhanced.company = { name: "Rompslomp" };
+        enhanced.confidence += 15;
+      }
+    }
+
+    // Try to extract basic transaction info even from poor OCR
+    const basicPatterns = this.extractBasicPatternsFromPoorOCR(text);
+    if (basicPatterns.date) {
+      enhanced.transaction = { date: basicPatterns.date };
+      enhanced.confidence += 10;
+    }
+    if (basicPatterns.time) {
+      if (!enhanced.transaction) enhanced.transaction = {};
+      enhanced.transaction.time = basicPatterns.time;
+      enhanced.confidence += 5;
+    }
+    if (basicPatterns.amount) {
+      enhanced.financial = {
+        total_amount: basicPatterns.amount,
+        currency: "EUR",
+      };
+      enhanced.confidence += 15;
+    }
+
+    return enhanced;
+  }
+
+  /**
+   * Extract basic patterns even from very poor OCR text
+   */
+  extractBasicPatternsFromPoorOCR(text) {
+    const patterns = {};
+
+    // Look for any date-like patterns (even partial)
+    const dateMatches = text.match(/(\d{1,2})[\/\-\.](\d{1,2})/g);
+    if (dateMatches && dateMatches.length > 0) {
+      // Take the first date-like pattern
+      patterns.date = dateMatches[0];
+    }
+
+    // Look for time patterns
+    const timeMatches = text.match(/(\d{1,2}):(\d{2})/g);
+    if (timeMatches && timeMatches.length > 0) {
+      patterns.time = timeMatches[0];
+    }
+
+    // Look for any amount-like patterns (even partial)
+    const amountMatches = text.match(/(\d+[.,]\d{2})/g);
+    if (amountMatches && amountMatches.length > 0) {
+      // Take the largest amount as likely total
+      const amounts = amountMatches
+        .map((amt) => {
+          const clean = amt.replace(",", ".");
+          return parseFloat(clean) || 0;
+        })
+        .filter((amt) => amt > 0);
+
+      if (amounts.length > 0) {
+        patterns.amount = Math.max(...amounts);
+      }
+    }
+
+    return patterns;
+  }
+
+  /**
+   * Create intelligent fallback analysis based on document content
+   */
+  createIntelligentFallbackAnalysis(text, documentType, error = null) {
+    console.log(
+      `🧠 Creating intelligent fallback analysis for ${documentType}`
+    );
+
+    // Extract actual data from text instead of using generic "NB" values
+    const extractedData = this.extractActualDataFromText(text, documentType);
+
+    // If OCR text is too poor, try to extract from filename and document type
+    if (extractedData.confidence < 50 && text && text.length < 1000) {
+      console.log(`⚠️ Poor OCR quality detected, using enhanced fallback`);
+      const enhancedData = this.enhanceFallbackWithDocumentInfo(
+        documentType,
+        text
+      );
+      Object.assign(extractedData, enhancedData);
+    }
+
+    const analysis = {
+      document_info: {
+        type: documentType,
+        subtype: this.detectSubtype(text),
+        language: this.detectLanguage(text),
+        confidence: extractedData.confidence || 70,
+      },
+      company_info: extractedData.company || {},
+      transaction_info: extractedData.transaction || {},
+      financial_info: extractedData.financial || {
+        currency: "EUR",
+        total_amount: 0,
+      },
+      loyalty_info: extractedData.loyalty || {},
+      items: extractedData.items || [],
+      item_summary: extractedData.itemSummary || {},
+      btw_breakdown: extractedData.btw || {},
+      store_info: extractedData.store || {},
+      bank_info: extractedData.bank || {},
+      notes: this.createIntelligentNotes(
+        text,
+        documentType,
+        extractedData,
+        error
+      ),
+      raw_text: text ? text.substring(0, 50000) : "",
+    };
+
+    return analysis;
   }
 }
 

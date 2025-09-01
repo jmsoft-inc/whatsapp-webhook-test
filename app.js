@@ -1,3 +1,11 @@
+// Load environment variables from .env file
+require("dotenv").config({ path: "../config/credentials/.env" });
+
+// Set environment for source identification
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = "development";
+}
+
 // Import Express.js
 const express = require("express");
 const axios = require("axios");
@@ -81,7 +89,31 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 // Google Sheets configuration
 const GOOGLE_SHEETS_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-const GOOGLE_SHEETS_CREDENTIALS = process.env.GOOGLE_SHEETS_CREDENTIALS;
+
+// Load Google Sheets credentials from file if not set as environment variable
+let GOOGLE_SHEETS_CREDENTIALS = process.env.GOOGLE_SHEETS_CREDENTIALS;
+if (!GOOGLE_SHEETS_CREDENTIALS && process.env.GOOGLE_SHEETS_CREDENTIALS_FILE) {
+  try {
+    const fs = require("fs");
+    const credentialsPath = path.join(
+      __dirname,
+      "..",
+      "config",
+      "credentials",
+      process.env.GOOGLE_SHEETS_CREDENTIALS_FILE
+    );
+    const credentialsContent = fs.readFileSync(credentialsPath, "utf8");
+    GOOGLE_SHEETS_CREDENTIALS = credentialsContent;
+    // Set the environment variable so other functions can access it
+    process.env.GOOGLE_SHEETS_CREDENTIALS = credentialsContent;
+    console.log("✅ Loaded Google Sheets credentials from file");
+  } catch (error) {
+    console.error(
+      "❌ Error loading Google Sheets credentials from file:",
+      error
+    );
+  }
+}
 
 // Initialize comprehensive invoice analysis library
 const invoiceLibrary = new InvoiceAnalysisLibrary();
@@ -98,6 +130,15 @@ const processedDocuments = new Map(); // Store document fingerprints to prevent 
 // Route for GET requests (webhook verification)
 app.get("/", (req, res) => {
   res.send("WhatsApp Webhook is running!");
+});
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    message: "WhatsApp Webhook server is running",
+  });
 });
 
 // Route for viewing receipts list
@@ -665,38 +706,38 @@ async function processFileMessage(message, fileType) {
       return;
     }
 
-         // Extract text from file (for compatibility with existing code)
-     const extractedText = await extractTextFromFile(
-       fileResult.filepath,
-       mimeType
-     );
-     console.log("📝 Extracted text:", extractedText);
+    // Extract text from file (for compatibility with existing code)
+    const extractedText = await extractTextFromFile(
+      fileResult.filepath,
+      mimeType
+    );
+    console.log("📝 Extracted text:", extractedText);
 
-     // Create document fingerprint for duplicate detection
-     const documentFingerprint = createDocumentFingerprint(
-       extractedText,
-       fileType
-     );
+    // Create document fingerprint for duplicate detection
+    const documentFingerprint = createDocumentFingerprint(
+      extractedText,
+      fileType
+    );
 
-     // Only check for duplicates if we have a valid fingerprint
-     if (
-       documentFingerprint &&
-       documentFingerprint.company !== "unknown" &&
-       documentFingerprint.totalAmount > 0
-     ) {
-       if (isDuplicateDocument(documentFingerprint, from)) {
-         console.log("🔄 Duplicate document detected, skipping processing");
-         await sendWhatsAppMessage(
-           from,
-           "🔄 Dit document is al eerder verwerkt. Overslaan..."
-         );
-         return;
-       }
-     } else {
-       console.log(
-         "⚠️ Could not create reliable fingerprint, proceeding with processing"
-       );
-     }
+    // Only check for duplicates if we have a valid fingerprint
+    if (
+      documentFingerprint &&
+      documentFingerprint.company !== "unknown" &&
+      documentFingerprint.totalAmount > 0
+    ) {
+      if (isDuplicateDocument(documentFingerprint, from)) {
+        console.log("🔄 Duplicate document detected, skipping processing");
+        await sendWhatsAppMessage(
+          from,
+          "🔄 Dit document is al eerder verwerkt. Overslaan..."
+        );
+        return;
+      }
+    } else {
+      console.log(
+        "⚠️ Could not create reliable fingerprint, proceeding with processing"
+      );
+    }
 
     // Check if text extraction failed
     if (
@@ -776,24 +817,24 @@ async function processFileMessage(message, fileType) {
     // Add to session
     session.invoices.push(invoiceData);
 
-         // Send response based on mode
-     if (session.multipleMode) {
-       // In multiple mode, don't send individual detailed messages
-       // Just send a simple confirmation and wait for 'klaar' command
-       console.log(
-         `📊 Document ${session.invoices.length} processed in multiple mode. Waiting for more documents or 'klaar' command.`
-       );
-       
-       await sendWhatsAppMessage(
-         from,
-         `✅ Document ${session.invoices.length} verwerkt en opgeslagen. Stuur 'klaar' wanneer je alle documenten hebt geüpload.`
-       );
-     } else {
-       await sendSingleInvoiceSummary(from, invoiceData);
-       // Menu is automatically shown in sendSingleInvoiceSummary
-       session.state = "initial";
-       session.invoices = [];
-     }
+    // Send response based on mode
+    if (session.multipleMode) {
+      // In multiple mode, don't send individual detailed messages
+      // Just send a simple confirmation and wait for 'klaar' command
+      console.log(
+        `📊 Document ${session.invoices.length} processed in multiple mode. Waiting for more documents or 'klaar' command.`
+      );
+
+      await sendWhatsAppMessage(
+        from,
+        `✅ Document ${session.invoices.length} verwerkt en opgeslagen. Stuur 'klaar' wanneer je alle documenten hebt geüpload.`
+      );
+    } else {
+      await sendSingleInvoiceSummary(from, invoiceData);
+      // Menu is automatically shown in sendSingleInvoiceSummary
+      session.state = "initial";
+      session.invoices = [];
+    }
   } catch (error) {
     console.error("❌ Error processing image:", error);
     await sendWhatsAppMessage(

@@ -20,8 +20,9 @@
     "version:auto-today": "node scripts/auto_update_today.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
     "axios": "^1.6.0",
+    "dotenv": "^17.2.1",
+    "express": "^4.18.2",
     "googleapis": "^128.0.0",
     "pdf-parse": "^1.1.1"
   },
