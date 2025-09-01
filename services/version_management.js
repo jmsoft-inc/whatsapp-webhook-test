@@ -12,13 +12,13 @@ const VERSION_HISTORY = {
   minor: 8,
 
   // Bug fixes and patches
-  patch: 15,
+  patch: 17,
 
   // Development stage
   stage: "stable", // 'alpha', 'beta', 'rc', 'stable'
 
   // Build number (git commit count)
-  build: 73,
+  build: 74,
 
   // Release date
   releaseDate: "2025-09-01",
@@ -27,7 +27,7 @@ const VERSION_HISTORY = {
   milestones: [
     {
       version: "1.0.0",
-      date: "2025-01-09",
+      date: "2025-09-01",
       features: [
         "Initial WhatsApp webhook setup",
         "Basic invoice processing",
@@ -36,7 +36,7 @@ const VERSION_HISTORY = {
     },
     {
       version: "1.1.0",
-      date: "2025-01-09",
+      date: "2025-09-01",
       features: [
         "Albert Heijn receipt processing",
         "PDF text extraction",
@@ -45,7 +45,7 @@ const VERSION_HISTORY = {
     },
     {
       version: "1.2.0",
-      date: "2025-01-09",
+      date: "2025-09-01",
       features: [
         "Professional invoice processing",
         "Document type detection",
@@ -54,7 +54,7 @@ const VERSION_HISTORY = {
     },
     {
       version: "1.3.0",
-      date: "2025-01-09",
+      date: "2025-09-01",
       features: [
         "Admin commands system",
         "Google Sheets management",
@@ -63,7 +63,7 @@ const VERSION_HISTORY = {
     },
     {
       version: "1.4.0",
-      date: "2025-01-09",
+      date: "2025-09-01",
       features: [
         "Performance monitoring",
         "Enhanced user feedback",
@@ -72,7 +72,7 @@ const VERSION_HISTORY = {
     },
     {
       version: "1.5.0",
-      date: "2025-01-09",
+      date: "2025-09-01",
       features: [
         "Multi-file processing",
         "Advanced error handling",
@@ -81,7 +81,7 @@ const VERSION_HISTORY = {
     },
     {
       version: "1.6.0",
-      date: "2025-01-09",
+      date: "2025-09-01",
       features: [
         "Koopzegels tracking",
         "Detailed invoice breakdown",
@@ -90,7 +90,7 @@ const VERSION_HISTORY = {
     },
     {
       version: "1.7.0",
-      date: "2025-01-09",
+      date: "2025-09-01",
       features: [
         "WhatsApp List Message menus",
         "Professional invoice detection",
