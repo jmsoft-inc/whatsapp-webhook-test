@@ -5,6 +5,7 @@
 
 const { google } = require("googleapis");
 const { createSystemStatusMessage } = require("./enhanced_error_handling");
+const { performanceMonitor } = require("./performance_monitoring");
 
 // Google Sheets configuration
 const GOOGLE_SHEETS_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
@@ -313,6 +314,7 @@ function getAdminCommandsList() {
     "• `/reset` - Reset headers and formatting",
     "• `/delete INV-xxx` - Delete specific invoice",
     "• `/status` - Show system status",
+    "• `/performance` - Show performance metrics",
     "• `/help` - Show this help",
     "",
     "💡 *Usage:* Just type the command in WhatsApp",
@@ -354,6 +356,13 @@ async function processAdminCommand(command) {
       return {
         success: true,
         message: createSystemStatusMessage(),
+      };
+    }
+
+    if (cmd === "/performance" || cmd === "performance") {
+      return {
+        success: true,
+        message: performanceMonitor.createPerformanceReport(),
       };
     }
 
