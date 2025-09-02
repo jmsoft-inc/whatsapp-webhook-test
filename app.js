@@ -222,6 +222,11 @@ async function processFileMessage(message) {
         "📄 File processing completed successfully for:",
         fileInfo.filename
       );
+      
+      // Show main menu after successful processing
+      setTimeout(async () => {
+        await showMainMenu(message.from);
+      }, 3000);
     } catch (processingError) {
       console.error("❌ Error during file processing:", processingError);
 
@@ -233,19 +238,24 @@ async function processFileMessage(message) {
 
       throw processingError; // Re-throw to be caught by outer catch
     }
-  } catch (error) {
-    console.error("❌ Error processing file message:", error);
+      } catch (error) {
+      console.error("❌ Error processing file message:", error);
 
-    // Send error message
-    try {
-      await whatsappMessaging.sendTextMessage(
-        message.from,
-        "❌ Er is een fout opgetreden bij het verwerken van het bestand. Probeer het later opnieuw."
-      );
-    } catch (sendError) {
-      console.error("❌ Failed to send error message:", sendError);
+      // Send error message
+      try {
+        await whatsappMessaging.sendTextMessage(
+          message.from,
+          "❌ Er is een fout opgetreden bij het verwerken van het bestand. Probeer het later opnieuw."
+        );
+        
+        // Show main menu after error
+        setTimeout(async () => {
+          await showMainMenu(message.from);
+        }, 2000);
+      } catch (sendError) {
+        console.error("❌ Failed to send error message:", sendError);
+      }
     }
-  }
 }
 
 // Process image messages
@@ -329,6 +339,11 @@ async function processImageMessage(message) {
       console.log("🧹 Temporary image cleaned up");
 
       console.log("🖼️ Image processing completed successfully");
+      
+      // Show main menu after successful processing
+      setTimeout(async () => {
+        await showMainMenu(message.from);
+      }, 3000);
     } catch (processingError) {
       console.error("❌ Error during image processing:", processingError);
 
@@ -348,6 +363,11 @@ async function processImageMessage(message) {
         message.from,
         "❌ Er is een fout opgetreden bij het verwerken van de afbeelding. Probeer het later opnieuw."
       );
+      
+      // Show main menu after error
+      setTimeout(async () => {
+        await showMainMenu(message.from);
+      }, 2000);
     } catch (sendError) {
       console.error("❌ Failed to send error message:", sendError);
     }
@@ -370,6 +390,9 @@ async function showMainMenu(phoneNumber) {
 📤 **Of stuur direct een foto/PDF van een factuur om te beginnen!**`;
 
   await whatsappMessaging.sendTextMessage(phoneNumber, menuMessage);
+  
+  // Always show menu after any action
+  console.log("📋 Main menu sent to:", phoneNumber);
 }
 
 async function showInvoiceOptions(phoneNumber) {
@@ -390,6 +413,11 @@ async function showInvoiceOptions(phoneNumber) {
 💡 **Tip:** Zorg dat de factuur goed leesbaar is voor het beste resultaat!`;
 
   await whatsappMessaging.sendTextMessage(phoneNumber, message);
+  
+  // Show main menu after showing options
+  setTimeout(async () => {
+    await showMainMenu(phoneNumber);
+  }, 2000);
 }
 
 async function showBulkProcessingOptions(phoneNumber) {
@@ -409,6 +437,11 @@ async function showBulkProcessingOptions(phoneNumber) {
 💡 **Tip:** Je kunt tot 10 bestanden tegelijk verwerken. Stuur ze één voor één.`;
 
   await whatsappMessaging.sendTextMessage(phoneNumber, message);
+  
+  // Show main menu after showing options
+  setTimeout(async () => {
+    await showMainMenu(phoneNumber);
+  }, 2000);
 }
 
 async function showAdminOptions(phoneNumber) {
@@ -425,6 +458,11 @@ async function showAdminOptions(phoneNumber) {
 💡 **Gebruik:** Typ het commando (bijvoorbeeld: /clear)`;
 
   await whatsappMessaging.sendTextMessage(phoneNumber, message);
+  
+  // Show main menu after showing options
+  setTimeout(async () => {
+    await showMainMenu(phoneNumber);
+  }, 2000);
 }
 
 async function showSystemStatus(phoneNumber) {
@@ -442,6 +480,11 @@ async function showSystemStatus(phoneNumber) {
 💡 **Status:** Alle systemen werken correct!`;
 
   await whatsappMessaging.sendTextMessage(phoneNumber, statusMessage);
+  
+  // Show main menu after showing status
+  setTimeout(async () => {
+    await showMainMenu(phoneNumber);
+  }, 2000);
 }
 
 // Process text messages
@@ -481,9 +524,19 @@ async function processTextMessage(message) {
         } else {
           await whatsappMessaging.sendTextMessage(message.from, "❌ Admin commando mislukt. Probeer het opnieuw.");
         }
+        
+        // Show main menu after admin command
+        setTimeout(async () => {
+          await showMainMenu(message.from);
+        }, 2000);
       } catch (error) {
         console.error("❌ Error processing admin command:", error);
         await whatsappMessaging.sendTextMessage(message.from, "❌ Er is een fout opgetreden bij het verwerken van het admin commando.");
+        
+        // Show main menu after error
+        setTimeout(async () => {
+          await showMainMenu(message.from);
+        }, 2000);
       }
       return;
     }

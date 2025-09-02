@@ -9,7 +9,8 @@ const { google } = require("googleapis");
 
 // Google Sheets configuration
 const GOOGLE_SHEETS_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-const GOOGLE_SHEETS_CREDENTIALS_FILE = process.env.GOOGLE_SHEETS_CREDENTIALS_FILE;
+const GOOGLE_SHEETS_CREDENTIALS_FILE =
+  process.env.GOOGLE_SHEETS_CREDENTIALS_FILE;
 
 // Initialize Google Sheets API
 let sheets;
@@ -29,7 +30,7 @@ function initializeGoogleSheets() {
       GOOGLE_SHEETS_CREDENTIALS_FILE
     );
     const credentials = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
-    
+
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
