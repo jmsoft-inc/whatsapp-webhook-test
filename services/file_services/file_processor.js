@@ -9,7 +9,7 @@ const axios = require("axios");
 const { spawn } = require("child_process");
 
 // Create storage directory if it doesn't exist
-const STORAGE_DIR = path.join(__dirname, "receipt_files");
+const STORAGE_DIR = path.join(__dirname, "../../../storage/receipt_files");
 if (!fs.existsSync(STORAGE_DIR)) {
   fs.mkdirSync(STORAGE_DIR, { recursive: true });
 }
@@ -88,7 +88,7 @@ async function downloadWhatsAppFile(mediaId, filename) {
     }
 
     // Get media URL from WhatsApp
-    const mediaUrl = `https://graph.facebook.com/v18.0/${mediaId}`;
+    const mediaUrl = `https://graph.facebook.com/v22.0/${mediaId}`;
     const response = await axios.get(mediaUrl, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -224,17 +224,19 @@ Probeer het bestand opnieuw te sturen of neem contact op met support.`;
 async function extractTextFromImage(filepath) {
   try {
     console.log(`🖼️ Extracting text from image: ${filepath}`);
-    
+
     // Try using Tesseract OCR if available
     try {
-      const { createWorker } = require('tesseract.js');
+      const { createWorker } = require("tesseract.js");
       const worker = await createWorker();
-      await worker.loadLanguage('nld+eng');
-      await worker.initialize('nld+eng');
-      
-      const { data: { text } } = await worker.recognize(filepath);
+      await worker.loadLanguage("nld+eng");
+      await worker.initialize("nld+eng");
+
+      const {
+        data: { text },
+      } = await worker.recognize(filepath);
       await worker.terminate();
-      
+
       if (text && text.trim().length > 0) {
         console.log(`✅ OCR text extracted: ${text.length} characters`);
         return text;
@@ -242,21 +244,25 @@ async function extractTextFromImage(filepath) {
     } catch (ocrError) {
       console.log(`⚠️ Tesseract OCR failed: ${ocrError.message}`);
     }
-    
+
     // Improved fallback: use realistic simulated text for better AI analysis
-    console.log(`🔄 OCR not available, using improved fallback for: ${filepath}`);
-    
+    console.log(
+      `🔄 OCR not available, using improved fallback for: ${filepath}`
+    );
+
     // Generate realistic simulated text based on file name
     const fileName = path.basename(filepath).toLowerCase();
-    let simulatedText = '';
-    
-    if (fileName.includes('ah') || fileName.includes('albert')) {
+    let simulatedText = "";
+
+    if (fileName.includes("ah") || fileName.includes("albert")) {
       simulatedText = `ALBERT HEIJN
 FILIAAL 1427
 Parijsplein 19
 070-3935033
 
-${new Date().toLocaleDateString('nl-NL')} ${new Date().toLocaleTimeString('nl-NL')}
+${new Date().toLocaleDateString("nl-NL")} ${new Date().toLocaleTimeString(
+        "nl-NL"
+      )}
 
 AANTAL OMSCHRIJVING PRIJS BEDRAG
 BONUSKAART: xx0802
@@ -322,13 +328,13 @@ TOTAAL: 33,29 3,16
 
 1427 12:54
 35 41
-${new Date().toLocaleDateString('nl-NL')}
+${new Date().toLocaleDateString("nl-NL")}
 
 Vragen over je kassabon? Onze collega's helpen je graag`;
-    } else if (fileName.includes('jumbo')) {
+    } else if (fileName.includes("jumbo")) {
       simulatedText = `JUMBO SUPERMARKT KASSA BON
-Datum: ${new Date().toLocaleDateString('nl-NL')}
-Tijd: ${new Date().toLocaleTimeString('nl-NL')}
+Datum: ${new Date().toLocaleDateString("nl-NL")}
+Tijd: ${new Date().toLocaleTimeString("nl-NL")}
 
 PRODUCTEN:
 - Pasta spaghetti 500g: €1.19
@@ -344,8 +350,8 @@ AF TE REKENEN: €9.35
 Fijne dag verder!`;
     } else {
       simulatedText = `FACTUUR/BON
-Datum: ${new Date().toLocaleDateString('nl-NL')}
-Tijd: ${new Date().toLocaleTimeString('nl-NL')}
+Datum: ${new Date().toLocaleDateString("nl-NL")}
+Tijd: ${new Date().toLocaleTimeString("nl-NL")}
 
 PRODUCTEN:
 - Product 1: €5.99
@@ -358,8 +364,10 @@ AF TE REKENEN: €17.47
 
 Bedankt voor uw aankoop!`;
     }
-    
-    console.log(`✅ Generated realistic simulated text: ${simulatedText.length} characters`);
+
+    console.log(
+      `✅ Generated realistic simulated text: ${simulatedText.length} characters`
+    );
     return simulatedText;
   } catch (error) {
     console.error(`❌ Error extracting text from image: ${error.message}`);
@@ -415,16 +423,18 @@ async function extractTextFromPDF(filepath) {
 
   // Method 4: Return realistic simulated text for better AI analysis
   console.log(`🔄 All PDF extraction methods failed, using improved fallback`);
-  
+
   // Generate realistic simulated text based on file name
   const fileName = path.basename(filepath).toLowerCase();
-  let simulatedText = '';
-  
-  if (fileName.includes('rompslomp')) {
+  let simulatedText = "";
+
+  if (fileName.includes("rompslomp")) {
     simulatedText = `FACTUUR ROMP SLOMP BV
 Factuurnummer: FR-2025-001
-Datum: ${new Date().toLocaleDateString('nl-NL')}
-Vervaldatum: ${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('nl-NL')}
+Datum: ${new Date().toLocaleDateString("nl-NL")}
+Vervaldatum: ${new Date(
+      Date.now() + 30 * 24 * 60 * 60 * 1000
+    ).toLocaleDateString("nl-NL")}
 
 Klantgegevens:
 Naam: Test Klant
@@ -444,15 +454,15 @@ Totaal: €303.11
 Betaalwijze: Binnen 30 dagen
 IBAN: NL91ABNA0417164300
 BIC: ABNANL2A`;
-  } else if (fileName.includes('3151351')) {
+  } else if (fileName.includes("3151351")) {
     simulatedText = `FACTUUR SHARING SERVICE
 Factuurnummer: SS-2025-3151351
-Datum: ${new Date().toLocaleDateString('nl-NL')}
+Datum: ${new Date().toLocaleDateString("nl-NL")}
 
 Klantgegevens:
 Naam: Sharing User
 Service: Document Sharing Premium
-Periode: ${new Date().toLocaleDateString('nl-NL')}
+Periode: ${new Date().toLocaleDateString("nl-NL")}
 
 Diensten:
 - Premium Sharing: €29.99
@@ -464,11 +474,13 @@ BTW (21%): €11.55
 Totaal: €66.53
 
 Betaalwijze: Automatisch incasso
-Volgende factuur: ${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('nl-NL')}`;
+Volgende factuur: ${new Date(
+      Date.now() + 30 * 24 * 60 * 60 * 1000
+    ).toLocaleDateString("nl-NL")}`;
   } else {
     simulatedText = `FACTUUR GENERIEK
 Factuurnummer: FG-2025-001
-Datum: ${new Date().toLocaleDateString('nl-NL')}
+Datum: ${new Date().toLocaleDateString("nl-NL")}
 
 Klantgegevens:
 Naam: Generieke Klant
@@ -488,8 +500,10 @@ Totaal: €309.14
 Betaalwijze: Binnen 14 dagen
 IBAN: NL91ABNA0417164300`;
   }
-  
-  console.log(`✅ Generated realistic simulated PDF text: ${simulatedText.length} characters`);
+
+  console.log(
+    `✅ Generated realistic simulated PDF text: ${simulatedText.length} characters`
+  );
   return simulatedText;
 }
 

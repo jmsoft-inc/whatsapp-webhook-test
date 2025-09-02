@@ -748,14 +748,14 @@ class InvoiceAnalysisLibrary {
   extractCompanyInfo(text) {
     const lines = text.split("\n");
     const companyInfo = {
-              name: "Onbekend",
-        address: "Onbekend",
-        phone: "Onbekend",
-        email: "Onbekend",
-        website: "Onbekend",
-        kvk: "Onbekend",
-        btw: "Onbekend",
-        iban: "Onbekend",
+      name: "Onbekend",
+      address: "Onbekend",
+      phone: "Onbekend",
+      email: "Onbekend",
+      website: "Onbekend",
+      kvk: "Onbekend",
+      btw: "Onbekend",
+      iban: "Onbekend",
     };
 
     // Extract company name (look for company names in first few lines)
@@ -797,14 +797,14 @@ class InvoiceAnalysisLibrary {
    */
   extractTransactionInfo(text) {
     const transactionInfo = {
-              date: "Onbekend",
-        time: "Onbekend",
-        invoice_number: "Onbekend",
-        transaction_id: "Onbekend",
-        terminal_id: "Onbekend",
-        merchant_id: "Onbekend",
-        poi: "Onbekend",
-        period: "Onbekend",
+      date: "Onbekend",
+      time: "Onbekend",
+      invoice_number: "Onbekend",
+      transaction_id: "Onbekend",
+      terminal_id: "Onbekend",
+      merchant_id: "Onbekend",
+      poi: "Onbekend",
+      period: "Onbekend",
     };
 
     // Extract date

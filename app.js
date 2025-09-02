@@ -12,10 +12,14 @@ const path = require("path");
 
 // Import services from organized folders
 const whatsappMessaging = require("./services/whatsapp_services/whatsapp_messaging");
-const invoiceAnalysis = require("./services/ai_services/invoice_analysis_library");
-const sheetsService = require("./services/sheets_services/comprehensive_sheets_service");
+const InvoiceAnalysisLibrary = require("./services/ai_services/invoice_analysis_library");
+const ComprehensiveSheetsService = require("./services/sheets_services/comprehensive_sheets_service");
 const fileProcessor = require("./services/file_services/file_processor");
 const adminCommands = require("./services/admin_services/admin_commands");
+
+// Create service instances
+const invoiceAnalysis = new InvoiceAnalysisLibrary();
+const sheetsService = new ComprehensiveSheetsService();
 
 // Create Express app
 const app = express();
