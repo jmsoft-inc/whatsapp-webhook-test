@@ -47,8 +47,6 @@ app.get("/health", (req, res) => {
 });
 
 // Webhook verification and message processing endpoint (POST only)
-
-// Webhook endpoint for receiving messages (POST)
 app.post("/webhook", async (req, res) => {
   try {
     console.log("📥 POST request received");
