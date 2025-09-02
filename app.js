@@ -46,31 +46,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Webhook verification endpoint (GET)
-app.get("/webhook", (req, res) => {
-  try {
-    console.log("📥 GET request received for webhook verification");
-    console.log("📋 Query parameters:", req.query);
-    
-    const mode = req.query["hub.mode"];
-    const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
-    
-    console.log(`📋 Mode: ${mode}, Token: ${token}, Challenge: ${challenge}`);
-    
-    // Check if mode and token are correct
-    if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-      console.log("✅ Webhook verification successful");
-      res.status(200).send(challenge);
-    } else {
-      console.log("❌ Webhook verification failed - invalid token or mode");
-      res.status(403).send("Forbidden");
-    }
-  } catch (error) {
-    console.error("❌ Error in webhook verification:", error);
-    res.status(500).send("Internal Server Error");
-  }
-});
+// Webhook verification and message processing endpoint (POST only)
 
 // Webhook endpoint for receiving messages (POST)
 app.post("/webhook", async (req, res) => {
@@ -81,8 +57,13 @@ app.post("/webhook", async (req, res) => {
     console.log("📋 Request body hub.challenge:", req.body["hub.challenge"]);
     console.log("📋 Full request body:", JSON.stringify(req.body, null, 2));
 
-    // Webhook verification is now handled by GET endpoint
-    // This POST endpoint only processes actual messages
+    // Handle webhook verification (POST method for Render compatibility)
+    if (req.body.mode === "subscribe" && req.body["hub.challenge"]) {
+      console.log("✅ Webhook verification successful via POST");
+      console.log("📋 Challenge:", req.body["hub.challenge"]);
+      res.status(200).send(req.body["hub.challenge"]);
+      return;
+    }
 
     // Process webhook events
     if (req.body.object === "whatsapp_business_account") {
