@@ -1041,7 +1041,7 @@ async function setupGoogleSheetsHeaders() {
     // Use the new setup function
     const {
       setupGoogleSheetsTabs,
-    } = require("../setup/setup_google_sheets_tabs");
+    } = require("../../../setup/setup_google_sheets_tabs");
     return await setupGoogleSheetsTabs();
   } catch (error) {
     console.error("❌ Error setting up Google Sheets headers:", error);

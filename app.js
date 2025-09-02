@@ -150,58 +150,74 @@ async function processFileMessage(message) {
 
     // REAL FILE PROCESSING IMPLEMENTATION
     console.log("🔄 Starting real file processing...");
-    
+
     try {
       // Step 1: Download file from WhatsApp
       console.log("📥 Downloading file from WhatsApp...");
-      const downloadedFile = await fileProcessor.downloadWhatsAppFile(fileInfo.id, fileInfo.filename);
-      
+      const downloadedFile = await fileProcessor.downloadWhatsAppFile(
+        fileInfo.id,
+        fileInfo.filename
+      );
+
       if (!downloadedFile) {
         throw new Error("Failed to download file from WhatsApp");
       }
-      
+
       console.log("✅ File downloaded successfully:", downloadedFile.path);
-      
+
       // Step 2: Process file with OCR and AI analysis
       console.log("🤖 Processing file with AI analysis...");
-      const analysisResult = await invoiceAnalysis.analyzeDocument(downloadedFile.path);
-      
+      const analysisResult = await invoiceAnalysis.analyzeDocument(
+        downloadedFile.path
+      );
+
       if (!analysisResult) {
         throw new Error("AI analysis failed");
       }
-      
+
       console.log("✅ AI analysis completed successfully");
-      
+
       // Step 3: Save to Google Sheets
       console.log("💾 Saving analysis to Google Sheets...");
-      const sheetsResult = await sheetsService.saveComprehensiveAnalysis(analysisResult, invoiceNumber);
-      
+      const sheetsResult = await sheetsService.saveComprehensiveAnalysis(
+        analysisResult,
+        invoiceNumber
+      );
+
       if (!sheetsResult) {
         throw new Error("Failed to save to Google Sheets");
       }
-      
+
       console.log("✅ Data saved to Google Sheets successfully");
-      
+
       // Step 4: Send detailed success response
-      const successMessage = `🎉 Factuur succesvol verwerkt!\n\n📊 Factuurnummer: ${invoiceNumber}\n🏢 Bedrijf: ${analysisResult.analysis?.company_info?.name || 'Onbekend'}\n💰 Totaal: €${analysisResult.analysis?.financial_info?.total_amount || 'Onbekend'}\n📅 Datum: ${analysisResult.analysis?.financial_info?.date || 'Onbekend'}\n\n✅ Data is opgeslagen in Google Sheets`;
-      
+      const successMessage = `🎉 Factuur succesvol verwerkt!\n\n📊 Factuurnummer: ${invoiceNumber}\n🏢 Bedrijf: ${
+        analysisResult.analysis?.company_info?.name || "Onbekend"
+      }\n💰 Totaal: €${
+        analysisResult.analysis?.financial_info?.total_amount || "Onbekend"
+      }\n📅 Datum: ${
+        analysisResult.analysis?.financial_info?.date || "Onbekend"
+      }\n\n✅ Data is opgeslagen in Google Sheets`;
+
       await whatsappMessaging.sendTextMessage(message.from, successMessage);
-      
+
       // Step 5: Clean up downloaded file
       await fileProcessor.cleanupFile(downloadedFile.path);
       console.log("🧹 Temporary file cleaned up");
-      
-      console.log("📄 File processing completed successfully for:", fileInfo.filename);
-      
+
+      console.log(
+        "📄 File processing completed successfully for:",
+        fileInfo.filename
+      );
     } catch (processingError) {
       console.error("❌ Error during file processing:", processingError);
-      
+
       // Send detailed error message
       await whatsappMessaging.sendTextMessage(
         message.from,
         `❌ Fout tijdens verwerking:\n\n${processingError.message}\n\n💡 Probeer het later opnieuw of neem contact op met support.`
       );
-      
+
       throw processingError; // Re-throw to be caught by outer catch
     }
   } catch (error) {
@@ -244,58 +260,71 @@ async function processImageMessage(message) {
 
     // REAL IMAGE PROCESSING IMPLEMENTATION
     console.log("🔄 Starting real image processing...");
-    
+
     try {
       // Step 1: Download image from WhatsApp
       console.log("📥 Downloading image from WhatsApp...");
-      const downloadedImage = await fileProcessor.downloadWhatsAppFile(imageInfo.id, imageInfo.filename || 'image.jpg');
-      
+      const downloadedImage = await fileProcessor.downloadWhatsAppFile(
+        imageInfo.id,
+        imageInfo.filename || "image.jpg"
+      );
+
       if (!downloadedImage) {
         throw new Error("Failed to download image from WhatsApp");
       }
-      
+
       console.log("✅ Image downloaded successfully:", downloadedImage.path);
-      
+
       // Step 2: Process image with OCR and AI analysis
       console.log("🤖 Processing image with AI analysis...");
-      const analysisResult = await invoiceAnalysis.analyzeDocument(downloadedImage.path);
-      
+      const analysisResult = await invoiceAnalysis.analyzeDocument(
+        downloadedImage.path
+      );
+
       if (!analysisResult) {
         throw new Error("AI analysis failed");
       }
-      
+
       console.log("✅ AI analysis completed successfully");
-      
+
       // Step 3: Save to Google Sheets
       console.log("💾 Saving analysis to Google Sheets...");
-      const sheetsResult = await sheetsService.saveComprehensiveAnalysis(analysisResult, invoiceNumber);
-      
+      const sheetsResult = await sheetsService.saveComprehensiveAnalysis(
+        analysisResult,
+        invoiceNumber
+      );
+
       if (!sheetsResult) {
         throw new Error("Failed to save to Google Sheets");
       }
-      
+
       console.log("✅ Data saved to Google Sheets successfully");
-      
+
       // Step 4: Send detailed success response
-      const successMessage = `🎉 Afbeelding succesvol verwerkt!\n\n📊 Factuurnummer: ${invoiceNumber}\n🏢 Bedrijf: ${analysisResult.analysis?.company_info?.name || 'Onbekend'}\n💰 Totaal: €${analysisResult.analysis?.financial_info?.total_amount || 'Onbekend'}\n📅 Datum: ${analysisResult.analysis?.financial_info?.date || 'Onbekend'}\n\n✅ Data is opgeslagen in Google Sheets`;
-      
+      const successMessage = `🎉 Afbeelding succesvol verwerkt!\n\n📊 Factuurnummer: ${invoiceNumber}\n🏢 Bedrijf: ${
+        analysisResult.analysis?.company_info?.name || "Onbekend"
+      }\n💰 Totaal: €${
+        analysisResult.analysis?.financial_info?.total_amount || "Onbekend"
+      }\n📅 Datum: ${
+        analysisResult.analysis?.financial_info?.date || "Onbekend"
+      }\n\n✅ Data is opgeslagen in Google Sheets`;
+
       await whatsappMessaging.sendTextMessage(message.from, successMessage);
-      
+
       // Step 5: Clean up downloaded image
       await fileProcessor.cleanupFile(downloadedImage.path);
       console.log("🧹 Temporary image cleaned up");
-      
+
       console.log("🖼️ Image processing completed successfully");
-      
     } catch (processingError) {
       console.error("❌ Error during image processing:", processingError);
-      
+
       // Send detailed error message
       await whatsappMessaging.sendTextMessage(
         message.from,
         `❌ Fout tijdens verwerking:\n\n${processingError.message}\n\n💡 Probeer het later opnieuw of neem contact op met support.`
       );
-      
+
       throw processingError; // Re-throw to be caught by outer catch
     }
   } catch (error) {
