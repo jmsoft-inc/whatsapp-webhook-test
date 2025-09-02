@@ -19,7 +19,8 @@ class InvoiceAnalysisLibrary {
       openai: {
         model: "gpt-4o-mini", // Use a more reliable model
         temperature: 0.1,
-        maxTokens: 4000,
+        maxTokens: 2000, // Reduced for faster processing
+        timeout: 30000, // Reduced timeout to 30 seconds
       },
       ocr: {
         confidenceThreshold: 60,
@@ -27,7 +28,7 @@ class InvoiceAnalysisLibrary {
       },
       processing: {
         maxFileSize: 10 * 1024 * 1024, // 10MB
-        timeout: 60000, // Increased from 30000 to 60000 (60 seconds)
+        timeout: 30000, // Reduced to 30 seconds for faster processing
       },
     };
   }
