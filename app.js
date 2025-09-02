@@ -148,7 +148,7 @@ async function processFileMessage(message) {
       )}\n\nDe factuur wordt geanalyseerd en opgeslagen in Google Sheets.`
     );
 
-        // IMPROVED FILE PROCESSING WITH BETTER OCR AND FALLBACK
+    // IMPROVED FILE PROCESSING WITH BETTER OCR AND FALLBACK
     console.log("🔄 Starting improved file processing...");
     
     try {
@@ -191,8 +191,10 @@ async function processFileMessage(message) {
       console.log("✅ Data saved to Google Sheets successfully");
       
       // Step 4: Send detailed success response with source indicator
-      const companyName = analysisResult.analysis?.company_info?.name || "Onbekend";
-      const totalAmount = analysisResult.analysis?.financial_info?.total_amount || "Onbekend";
+      const companyName =
+        analysisResult.analysis?.company_info?.name || "Onbekend";
+      const totalAmount =
+        analysisResult.analysis?.financial_info?.total_amount || "Onbekend";
       const date = analysisResult.analysis?.financial_info?.date || "Onbekend";
       
       const successMessage = `🎉 Factuur succesvol verwerkt!\n\n📊 Factuurnummer: ${invoiceNumber}\n🏢 Bedrijf: ${companyName}\n💰 Totaal: €${totalAmount}\n📅 Datum: ${date}\n\n✅ Data is opgeslagen in Google Sheets\n\n🔗 Bron: WhatsApp Webhook (Server)`;
@@ -256,7 +258,7 @@ async function processImageMessage(message) {
       )}\n\nDe afbeelding wordt geanalyseerd met OCR en AI, en opgeslagen in Google Sheets.`
     );
 
-        // IMPROVED IMAGE PROCESSING WITH BETTER OCR AND FALLBACK
+    // IMPROVED IMAGE PROCESSING WITH BETTER OCR AND FALLBACK
     console.log("🔄 Starting improved image processing...");
     
     try {
@@ -299,8 +301,10 @@ async function processImageMessage(message) {
       console.log("✅ Data saved to Google Sheets successfully");
       
       // Step 4: Send detailed success response with source indicator
-      const companyName = analysisResult.analysis?.company_info?.name || "Onbekend";
-      const totalAmount = analysisResult.analysis?.financial_info?.total_amount || "Onbekend";
+      const companyName =
+        analysisResult.analysis?.company_info?.name || "Onbekend";
+      const totalAmount =
+        analysisResult.analysis?.financial_info?.total_amount || "Onbekend";
       const date = analysisResult.analysis?.financial_info?.date || "Onbekend";
       
       const successMessage = `🎉 Afbeelding succesvol verwerkt!\n\n📊 Factuurnummer: ${invoiceNumber}\n🏢 Bedrijf: ${companyName}\n💰 Totaal: €${totalAmount}\n📅 Datum: ${date}\n\n✅ Data is opgeslagen in Google Sheets\n\n🔗 Bron: WhatsApp Webhook (Server)`;
