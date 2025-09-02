@@ -377,7 +377,7 @@ async function processTextMessage(message) {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 WhatsApp Webhook server running on port ${PORT}`);
+  console.log(`🚀 WhatsApp Webhook server running on port ${PORT} - v2.1`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
   console.log(`📱 Health check: http://localhost:${PORT}/health`);
   console.log(`🔗 Webhook endpoint: http://localhost:${PORT}/webhook`);
