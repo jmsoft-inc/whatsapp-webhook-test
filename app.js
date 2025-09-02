@@ -356,7 +356,7 @@ async function processImageMessage(message) {
 
 // Menu Functions
 async function showMainMenu(phoneNumber) {
-  const menuMessage = `🤖 **WhatsApp Invoice Agent - Hoofdmenu**
+  const menuMessage = `🤖 **WhatsApp Invoice Agent - Hoofdmenu v2.0**
 
 📋 **Beschikbare opties:**
 
@@ -416,11 +416,11 @@ async function showAdminOptions(phoneNumber) {
 
 📋 **Beschikbare commando's:**
 
-• `/clear` - Wis alle data uit Google Sheets
-• `/stats` - Toon statistieken
-• `/reset` - Reset headers en formatting
-• `/status` - Systeem status
-• `/help` - Admin help
+• /clear - Wis alle data uit Google Sheets
+• /stats - Toon statistieken
+• /reset - Reset headers en formatting
+• /status - Systeem status
+• /help - Admin help
 
 💡 **Gebruik:** Typ het commando (bijvoorbeeld: /clear)`;
 
@@ -449,29 +449,34 @@ async function processTextMessage(message) {
   try {
     console.log("📝 Processing text message:", message.text.body);
     const text = message.text.body.toLowerCase();
-    
+
     // Check for menu commands
-    if (text === "menu" || text === "help" || text === "start" || text === "begin") {
+    if (
+      text === "menu" ||
+      text === "help" ||
+      text === "start" ||
+      text === "begin"
+    ) {
       await showMainMenu(message.from);
       return;
     }
-    
+
     // Check for specific menu options
     if (text === "1" || text === "factuur" || text === "facturen") {
       await showInvoiceOptions(message.from);
       return;
     }
-    
+
     if (text === "2" || text === "meerdere" || text === "bulk") {
       await showBulkProcessingOptions(message.from);
       return;
     }
-    
+
     if (text === "3" || text === "admin" || text === "beheer") {
       await showAdminOptions(message.from);
       return;
     }
-    
+
     // Handle admin commands
     if (text.startsWith("/")) {
       try {
@@ -479,20 +484,26 @@ async function processTextMessage(message) {
         if (result && result.success) {
           await whatsappMessaging.sendTextMessage(message.from, result.message);
         } else {
-          await whatsappMessaging.sendTextMessage(message.from, "❌ Admin commando mislukt. Probeer het opnieuw.");
+          await whatsappMessaging.sendTextMessage(
+            message.from,
+            "❌ Admin commando mislukt. Probeer het opnieuw."
+          );
         }
       } catch (error) {
         console.error("❌ Error processing admin command:", error);
-        await whatsappMessaging.sendTextMessage(message.from, "❌ Er is een fout opgetreden bij het verwerken van het admin commando.");
+        await whatsappMessaging.sendTextMessage(
+          message.from,
+          "❌ Er is een fout opgetreden bij het verwerken van het admin commando."
+        );
       }
       return;
     }
-    
+
     if (text === "4" || text === "status" || text === "info") {
       await showSystemStatus(message.from);
       return;
     }
-    
+
     // If no command recognized, show main menu
     await showMainMenu(message.from);
   } catch (error) {
