@@ -46,7 +46,33 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Webhook endpoint
+// Webhook verification endpoint (GET)
+app.get("/webhook", (req, res) => {
+  try {
+    console.log("📥 GET request received for webhook verification");
+    console.log("📋 Query parameters:", req.query);
+    
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+    
+    console.log(`📋 Mode: ${mode}, Token: ${token}, Challenge: ${challenge}`);
+    
+    // Check if mode and token are correct
+    if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+      console.log("✅ Webhook verification successful");
+      res.status(200).send(challenge);
+    } else {
+      console.log("❌ Webhook verification failed - invalid token or mode");
+      res.status(403).send("Forbidden");
+    }
+  } catch (error) {
+    console.error("❌ Error in webhook verification:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// Webhook endpoint for receiving messages (POST)
 app.post("/webhook", async (req, res) => {
   try {
     console.log("📥 POST request received");
@@ -55,12 +81,8 @@ app.post("/webhook", async (req, res) => {
     console.log("📋 Request body hub.challenge:", req.body["hub.challenge"]);
     console.log("📋 Full request body:", JSON.stringify(req.body, null, 2));
 
-    // Handle webhook verification
-    if (req.body.mode === "subscribe" && req.body["hub.challenge"]) {
-      console.log("✅ Webhook verification successful");
-      res.status(200).send(req.body["hub.challenge"]);
-      return;
-    }
+    // Webhook verification is now handled by GET endpoint
+    // This POST endpoint only processes actual messages
 
     // Process webhook events
     if (req.body.object === "whatsapp_business_account") {
@@ -150,7 +172,7 @@ async function processFileMessage(message) {
 
     // IMPROVED FILE PROCESSING WITH BETTER OCR AND FALLBACK
     console.log("🔄 Starting improved file processing...");
-    
+
     try {
       // Step 1: Download file from WhatsApp
       console.log("📥 Downloading file from WhatsApp...");
@@ -158,66 +180,66 @@ async function processFileMessage(message) {
         fileInfo.id,
         fileInfo.filename
       );
-      
+
       if (!downloadedFile) {
         throw new Error("Failed to download file from WhatsApp");
       }
-      
+
       console.log("✅ File downloaded successfully:", downloadedFile.path);
-      
+
       // Step 2: Process file with improved OCR and AI analysis
       console.log("🤖 Processing file with improved AI analysis...");
       const analysisResult = await invoiceAnalysis.analyzeDocument(
         downloadedFile.path
       );
-      
+
       if (!analysisResult) {
         throw new Error("AI analysis failed");
       }
-      
+
       console.log("✅ AI analysis completed successfully");
-      
+
       // Step 3: Save to Google Sheets
       console.log("💾 Saving analysis to Google Sheets...");
       const sheetsResult = await sheetsService.saveComprehensiveAnalysis(
         analysisResult,
         invoiceNumber
       );
-      
+
       if (!sheetsResult) {
         throw new Error("Failed to save to Google Sheets");
       }
-      
+
       console.log("✅ Data saved to Google Sheets successfully");
-      
+
       // Step 4: Send detailed success response with source indicator
       const companyName =
         analysisResult.analysis?.company_info?.name || "Onbekend";
       const totalAmount =
         analysisResult.analysis?.financial_info?.total_amount || "Onbekend";
       const date = analysisResult.analysis?.financial_info?.date || "Onbekend";
-      
+
       const successMessage = `🎉 Factuur succesvol verwerkt!\n\n📊 Factuurnummer: ${invoiceNumber}\n🏢 Bedrijf: ${companyName}\n💰 Totaal: €${totalAmount}\n📅 Datum: ${date}\n\n✅ Data is opgeslagen in Google Sheets\n\n🔗 Bron: WhatsApp Webhook (Server)`;
-      
+
       await whatsappMessaging.sendTextMessage(message.from, successMessage);
-      
+
       // Step 5: Clean up downloaded file
       await fileProcessor.cleanupFile(downloadedFile.path);
       console.log("🧹 Temporary file cleaned up");
-      
+
       console.log(
         "📄 File processing completed successfully for:",
         fileInfo.filename
       );
     } catch (processingError) {
       console.error("❌ Error during file processing:", processingError);
-      
+
       // Send detailed error message with source indicator
       await whatsappMessaging.sendTextMessage(
         message.from,
         `❌ Fout tijdens verwerking:\n\n${processingError.message}\n\n💡 Probeer het later opnieuw of neem contact op met support.\n\n🔗 Bron: WhatsApp Webhook (Server)`
       );
-      
+
       throw processingError; // Re-throw to be caught by outer catch
     }
   } catch (error) {
@@ -260,7 +282,7 @@ async function processImageMessage(message) {
 
     // IMPROVED IMAGE PROCESSING WITH BETTER OCR AND FALLBACK
     console.log("🔄 Starting improved image processing...");
-    
+
     try {
       // Step 1: Download image from WhatsApp
       console.log("📥 Downloading image from WhatsApp...");
@@ -268,63 +290,63 @@ async function processImageMessage(message) {
         imageInfo.id,
         imageInfo.filename || "image.jpg"
       );
-      
+
       if (!downloadedImage) {
         throw new Error("Failed to download image from WhatsApp");
       }
-      
+
       console.log("✅ Image downloaded successfully:", downloadedImage.path);
-      
+
       // Step 2: Process image with improved OCR and AI analysis
       console.log("🤖 Processing image with improved AI analysis...");
       const analysisResult = await invoiceAnalysis.analyzeDocument(
         downloadedImage.path
       );
-      
+
       if (!analysisResult) {
         throw new Error("AI analysis failed");
       }
-      
+
       console.log("✅ AI analysis completed successfully");
-      
+
       // Step 3: Save to Google Sheets
       console.log("💾 Saving analysis to Google Sheets...");
       const sheetsResult = await sheetsService.saveComprehensiveAnalysis(
         analysisResult,
         invoiceNumber
       );
-      
+
       if (!sheetsResult) {
         throw new Error("Failed to save to Google Sheets");
       }
-      
+
       console.log("✅ Data saved to Google Sheets successfully");
-      
+
       // Step 4: Send detailed success response with source indicator
       const companyName =
         analysisResult.analysis?.company_info?.name || "Onbekend";
       const totalAmount =
         analysisResult.analysis?.financial_info?.total_amount || "Onbekend";
       const date = analysisResult.analysis?.financial_info?.date || "Onbekend";
-      
+
       const successMessage = `🎉 Afbeelding succesvol verwerkt!\n\n📊 Factuurnummer: ${invoiceNumber}\n🏢 Bedrijf: ${companyName}\n💰 Totaal: €${totalAmount}\n📅 Datum: ${date}\n\n✅ Data is opgeslagen in Google Sheets\n\n🔗 Bron: WhatsApp Webhook (Server)`;
-      
+
       await whatsappMessaging.sendTextMessage(message.from, successMessage);
-      
+
       // Step 5: Clean up downloaded image
       await fileProcessor.cleanupFile(downloadedImage.path);
       console.log("🧹 Temporary image cleaned up");
-      
+
       console.log("🖼️ Image processing completed successfully");
     } catch (processingError) {
       console.error("❌ Error during image processing:", processingError);
-      
+
       // Send detailed error message with source indicator
       await whatsappMessaging.sendTextMessage(
         message.from,
         `❌ Fout tijdens verwerking:\n\n${processingError.message}\n\n💡 Probeer het later opnieuw of neem contact op met support.\n\n🔗 Bron: WhatsApp Webhook (Server)`
       );
-      
+
       throw processingError; // Re-throw to be caught by outer catch
     }
   } catch (error) {
